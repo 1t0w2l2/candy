@@ -339,12 +339,20 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
             return new Date(year, month + 1, 0).getDate();
         }
 
-        function generateCalendar(year, month) {
+        function generateCalendar(year, month, selectedDate) {
             const calendarGrid = document.querySelector('.calendar-grid');
             document.querySelectorAll('.calendar-grid div:not(.weekdays)').forEach(e => e.remove());
 
             const firstDay = new Date(year, month, 1).getDay();
             const daysInCurrentMonth = daysInMonth(year, month);
+
+            // 從 LocalStorage 中獲取選中日期
+            const storedSelectedDate = localStorage.getItem('selectedDate');
+            let storedYear, storedMonth, storedDay;
+            if (storedSelectedDate) {
+                [storedYear, storedMonth, storedDay] = storedSelectedDate.split('-').map(Number);
+                storedMonth -= 1; // 月份是 0-11
+            }
 
             for (let i = 0; i < firstDay; i++) {
                 const emptyCell = document.createElement('div');
@@ -353,22 +361,23 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
 
             for (let day = 1; day <= daysInCurrentMonth; day++) {
                 const dayCell = document.createElement('div');
-                const circleDiv = document.createElement('div'); // 創建圓形元素
+                const circleDiv = document.createElement('div'); // 圓形元素
                 circleDiv.className = 'circle'; // 設置圓形的類名
-                circleDiv.textContent = day; // 將日期添加到圓形中
+                circleDiv.textContent = day; // 設置日期
 
                 // 設置圓形的樣式
-                circleDiv.style.width = '40px'; // 根據需要調整圓形大小
-                circleDiv.style.height = '40px'; // 根據需要調整圓形大小
-                circleDiv.style.borderRadius = '50%'; // 設置為圓形
-                circleDiv.style.display = 'flex'; // 使用 Flexbox 進行居中
-                circleDiv.style.alignItems = 'center'; // 垂直居中
-                circleDiv.style.justifyContent = 'center'; // 水平居中
-                circleDiv.style.margin = '10px'; // 設置邊距
-                circleDiv.style.cursor = 'pointer'; // 鼠標指針樣式
+                circleDiv.style.width = '40px';
+                circleDiv.style.height = '40px';
+                circleDiv.style.borderRadius = '50%';
+                circleDiv.style.display = 'flex';
+                circleDiv.style.alignItems = 'center';
+                circleDiv.style.justifyContent = 'center';
+                circleDiv.style.margin = '10px';
+                circleDiv.style.cursor = 'pointer';
 
-                // 設置當前日期的顏色
-                if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
+                // 高亮當前日期或存儲的選中日期
+                if ((year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) ||
+                    (year === storedYear && month === storedMonth && day === storedDay)) {
                     circleDiv.style.backgroundColor = '#007bff';
                     circleDiv.style.color = 'white';
                 }
@@ -389,13 +398,10 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
                     circleDiv.style.backgroundColor = '#007bff';
                     circleDiv.style.color = 'white';
 
-                    if (date !== `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`) {
-                        document.getElementById('returnToday').style.display = 'block';
-                    } else {
-                        document.getElementById('returnToday').style.display = 'none';
-                    }
+                    // 存儲選中的日期到 localStorage
+                    localStorage.setItem('selectedDate', date);
 
-                    // AJAX 請求來獲取該日期的活動
+                    // 發送 AJAX 請求獲取該日期的活動
                     const xhr = new XMLHttpRequest();
                     xhr.open("POST", "", true);
                     xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -406,11 +412,13 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
                     };
                     xhr.send(`date=${date}`);
                 });
-                // 將圓形元素添加到日格
+
+                // 添加圓形元素到日格
                 dayCell.appendChild(circleDiv);
                 calendarGrid.appendChild(dayCell);
             }
         }
+
 
         document.getElementById('prevMonth').addEventListener('click', () => {
             if (currentMonth === 0) {
@@ -434,6 +442,7 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
             generateCalendar(currentYear, currentMonth);
         });
 
+        // 返回今天按鈕的點擊事件
         document.getElementById('returnToday').addEventListener('click', () => {
             currentYear = today.getFullYear();
             currentMonth = today.getMonth();
@@ -442,9 +451,12 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
             // 更新選中的日期顯示
             document.getElementById('selectedDate').textContent = `${today.toISOString().split('T')[0]} 行程`;
 
+            // 清除 localStorage 中的 selectedDate
+            localStorage.removeItem('selectedDate');
+
             // 更新月份顯示和生成日曆
             updateMonthYear();
-            generateCalendar(currentYear, currentMonth);
+            generateCalendar(currentYear, currentMonth, { year: currentYear, month: currentMonth, day: selectedDate });
 
             // 隱藏返回今天按鈕
             document.getElementById('returnToday').style.display = 'none';
@@ -462,15 +474,61 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
             xhr.send(`date=${encodeURIComponent(today.toISOString().split('T')[0])}`);
         });
 
-        document.addEventListener("DOMContentLoaded", function () {
-            const addEventButton = document.getElementById("addEvent");
-            const addOptions = document.querySelector(".add-options");
+        // 頁面加載時初始化
+        window.addEventListener('load', function () {
+            const selectedDateFromStorage = localStorage.getItem('selectedDate');
+            const returnTodayButton = document.getElementById('returnToday');
 
-            addEventButton.addEventListener("click", function (event) {
-                event.stopPropagation();
-                const isHidden = addOptions.style.display === "none" || addOptions.style.display === "";
-                addOptions.style.display = isHidden ? "block" : "none";
+            if (selectedDateFromStorage) {
+                // 如果有存儲的日期，更新選中的日期顯示
+                document.getElementById('selectedDate').textContent = `${selectedDateFromStorage} 行程`;
+
+                // 將日曆更新到該選中的日期
+                const [year, month, day] = selectedDateFromStorage.split('-').map(Number);
+                currentYear = year;
+                currentMonth = month - 1; // month 是 0-11，所以要減 1
+                selectedDate = day;
+
+                // 如果存儲的日期是今天，隱藏返回今天按鈕，否則顯示
+                if (
+                    currentYear === today.getFullYear() &&
+                    currentMonth === today.getMonth() &&
+                    selectedDate === today.getDate()
+                ) {
+                    returnTodayButton.style.display = 'none';
+                } else {
+                    returnTodayButton.style.display = 'block';
+                }
+
+                updateMonthYear();
+                generateCalendar(currentYear, currentMonth, { year: currentYear, month: currentMonth, day: selectedDate });
+            } else {
+                // 如果沒有存儲的日期，使用當前日期
+                generateCalendar(currentYear, currentMonth, { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() });
+
+                // 預設隱藏返回今天按鈕
+                returnTodayButton.style.display = 'none';
+            }
+        });
+
+        // 點擊其他日期時顯示返回今天按鈕
+        document.querySelectorAll('.circle').forEach(circle => {
+            circle.addEventListener('click', () => {
+                const returnTodayButton = document.getElementById('returnToday');
+
+                // 如果點擊的日期不是今天，顯示返回今天按鈕，並更新 localStorage
+                if (
+                    currentYear !== today.getFullYear() ||
+                    currentMonth !== today.getMonth() ||
+                    selectedDate !== today.getDate()
+                ) {
+                    returnTodayButton.style.display = 'block';
+                    localStorage.setItem('selectedDate', `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${selectedDate.toString().padStart(2, '0')}`);
+                } else {
+                    returnTodayButton.style.display = 'none';
+                }
             });
+
 
             document.addEventListener("click", function () {
                 addOptions.style.display = "none";
@@ -505,91 +563,98 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
             editModal.show();
         }
 
-        // 儲存變更
-        document.getElementById('saveChangesBtn').addEventListener('click', function () {
-            var form = document.getElementById('editEventForm');
-            var formData = new FormData(form);
+      // 儲存變更
+document.getElementById('saveChangesBtn').addEventListener('click', function () {
+    var form = document.getElementById('editEventForm');
+    var formData = new FormData(form);
 
-            // 添加 action 欄位來指定操作類型
-            formData.append('action', 'edit');
+    // 添加 action 欄位來指定操作類型
+    formData.append('action', 'edit');
 
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '', true);
-            xhr.onload = function () {
-                if (xhr.status === 200) {
-                    if (xhr.responseText.trim() === 'success') {
-                        alert('儲存成功');
-                        location.reload();  // 刷新頁面以顯示最新資料
-                    } else {
-                        alert('錯誤: ' + xhr.responseText);  // 顯示後端錯誤訊息
-                    }
-                } else {
-                    alert('錯誤: ' + xhr.statusText);
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '', true);
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            if (xhr.responseText.trim() === 'success') {
+                alert('儲存成功');
+
+                // 關閉表單（隱藏模態框）
+                var modal = document.getElementById('editEventModal'); // 假設你的模態框 ID 是 editEventModal
+                if (modal) {
+                    modal.style.display = 'none'; // 隱藏模態框
                 }
-            };
-            xhr.send(formData);  // 送出表單資料
-        });
+
+                location.reload(); // 刷新頁面以顯示最新資料
+            } else {
+                alert('錯誤: ' + xhr.responseText); // 顯示後端錯誤訊息
+            }
+        } else {
+            alert('錯誤: ' + xhr.statusText);
+        }
+    };
+    xhr.send(formData); // 送出表單資料
+});
 
         document.getElementById('deleteBtn').addEventListener('click', function () {
-    // 顯示確認對話框
-    var confirmation = confirm("是否確定刪除此行程？");
+            // 顯示確認對話框
+            var confirmation = confirm("是否確定刪除此行程？");
 
-    if (confirmation) {
-        var form = document.getElementById('editEventForm');
-        var formData = new FormData(form); // 收集表單數據
-        formData.append('action', 'delete'); // 添加刪除操作標識
+            if (confirmation) {
+                var form = document.getElementById('editEventForm');
+                var formData = new FormData(form);  // 收集表單數據
+                formData.append('action', 'delete');  // 添加刪除操作標識
 
-        // 使用 getElementsByName 獲取隱藏欄位的值
-        var eventDateHiddenCollection = document.getElementsByName('date'); // 返回 HTMLCollection
-        if (eventDateHiddenCollection.length > 0) {
-            var eventDate = eventDateHiddenCollection[0].value; // 取得第一個元素的值
-            console.log('刪除的行程日期:', eventDate);
-        } else {
-            console.error('找不到任何 date 欄位');
-            return; // 終止操作，避免發送錯誤請求
-        }
-
-        // 儲存刪除的日期到 Local Storage
-        if (eventDate) {
-            localStorage.setItem('lastDeletedEventDate', eventDate);
-        }
-
-        // 發送 AJAX 請求
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '', true); // 假設後端處理刪除的 URL 是空（根據實際情況修改）
-
-        xhr.onload = function () {
-            if (xhr.status === 200) {
-                if (xhr.responseText.trim() === 'success') {
-                    alert('刪除成功');
-                    location.reload(); // 刷新頁面並停留在刪除的日期
-                } else {
-                    alert('錯誤: ' + xhr.responseText);
+                // 檢查 formData 中的所有資料
+                for (var pair of formData.entries()) {
+                    console.log(pair[0] + ': ' + pair[1]);  // 顯示 formData 中的所有資料
                 }
-            } else {
-                alert('錯誤: ' + xhr.statusText);
+
+                // 獲取隱藏的日期欄位
+                var eventDateHidden = document.querySelector('#eventDateHidden');  // 使用 querySelector
+                if (eventDateHidden) {
+                    var eventDate = eventDateHidden.value;  // 獲取隱藏欄位的值
+                    console.log('刪除的行程日期:', eventDate);  // 檢查 eventDate 是否正確
+
+                    if (eventDate) {
+                        // 儲存刪除的日期到 Local Storage
+                        localStorage.setItem('lastDeletedEventDate', eventDate);
+                    }
+                } else {
+                    console.error('找不到 eventDateHidden 元素');
+                }
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '', true);  // 假設後端處理刪除的 URL 是空（根據實際情況修改）
+
+                xhr.onload = function () {
+                    if (xhr.status === 200) {
+                        if (xhr.responseText.trim() === 'success') {
+                            alert('刪除成功');
+                            location.reload();  // 刷新頁面
+                        } else {
+                            alert('錯誤: ' + xhr.responseText);
+                        }
+                    } else {
+                        alert('錯誤: ' + xhr.statusText);
+                    }
+                };
+
+                xhr.send(formData);  // 發送刪除請求
             }
-        };
+        });
 
-        xhr.send(formData); // 發送刪除請求
-    }
-});
+        window.addEventListener('load', function () {
+            var lastDeletedEventDate = localStorage.getItem('lastDeletedEventDate');
 
-
-//頁面加載時檢查是否有儲存的刪除日期
-window.addEventListener('load', function () {
-    var lastDeletedEventDate = localStorage.getItem('lastDeletedEventDate');
-
-    if (lastDeletedEventDate) {
-        console.log('已儲存的刪除日期:', lastDeletedEventDate);
-        // 設置當前顯示的日期並在該日期顯示圓圈
-        setCurrentDate(lastDeletedEventDate);
-
-    } else {
-        console.log('沒有儲存的刪除日期');
-    }
-});
-
+            if (lastDeletedEventDate) {
+                console.log('已儲存的刪除日期:', lastDeletedEventDate);
+                // 確保 setCurrentDate 函數存在並接受正確格式的日期
+                setCurrentDate(lastDeletedEventDate);
+                localStorage.removeItem('lastDeletedEventDate');  // 清除儲存的日期
+            } else {
+                console.log('沒有儲存的刪除日期');
+            }
+        });
 
 
 
