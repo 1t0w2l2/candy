@@ -416,7 +416,7 @@ function send_verification_email($email, $name, $verification_code)
                         </form>
                     </div>
                 </div>
-                <?php if ($user['user_type'] != 'hospital'): ?>
+                <?php if ($user['user_type'] != 'hospital' and $user['user_type'] != 'admin'): ?>
                     <div class="col-lg-4">
                         <div class="card p-4 shadow-sm" style="max-width: 100%;">
                             <h2 class="text-center" style="color: #000;">綁定帳號</h2>

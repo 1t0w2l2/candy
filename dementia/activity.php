@@ -3,11 +3,11 @@ session_start();
 include "db.php";
 
 // 檢查用戶是否登入
-$account = isset($_SESSION['account']) ? $_SESSION['account'] : '';
-if (empty($account)) {
-    header("Location: login.php");
-    exit();
-}
+// $account = isset($_SESSION['account']) ? $_SESSION['account'] : '';
+// if (empty($account)) {
+//     header("Location: login.php");
+//     exit();
+// }
 
 // 取得所有活動
 $activities = [];

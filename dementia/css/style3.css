@@ -436,6 +436,7 @@ tr.clicked {
     justify-content: space-between;
     padding: 50px;
     width: 100%;
+    margin-top: 5%;
 }
 
 .filter-section {
@@ -788,6 +789,7 @@ tr.clicked {
     overflow: hidden;
     position: relative;
     min-height: 500px;
+    margin-top: 6%;
 }
 
 .chat-list {

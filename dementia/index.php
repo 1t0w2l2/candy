@@ -19,7 +19,7 @@ $id = isset($_SESSION['institution_id']) ? $_SESSION['institution_id'] : '';
    <?php include "nav.php"; ?>
 
     <div id="app">
-        <div id="map" style="top: 12%">
+        <div id="map" style="top: 14%">
             <div class="dropdown-container">
                 <select class="form-select dropdown-style" v-model="selectedCounty" @change="handleCountyChange">
                     <option disabled value="">縣市</option>

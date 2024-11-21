@@ -29,6 +29,7 @@ include 'db.php';
             width: 100%;
             flex-grow: 1;
             height: calc(100% - 76px);
+            margin-top:6%;
         }
 
         /* 左側選單 */
@@ -73,6 +74,7 @@ include 'db.php';
         .custom-menu-item:hover {
             background-color: #C7C2AB;
             color: #fff;
+
         }
 
         .custom-support {
