@@ -652,7 +652,7 @@ document.getElementById('saveChangesBtn').addEventListener('click', function () 
                 setCurrentDate(lastDeletedEventDate);
                 localStorage.removeItem('lastDeletedEventDate');  // 清除儲存的日期
             } else {
-                console.log('沒有儲存的刪除日期');
+                // console.log('沒有儲存的刪除日期');
             }
         });
 
