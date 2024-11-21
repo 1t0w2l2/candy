@@ -10,14 +10,35 @@ if (empty($account)) {
 }
 
 // 獲取 institution_id
-$sql_institution_id = "SELECT institution_id FROM hospital WHERE account = '" . mysqli_real_escape_string($link, $account) . "'";
-$result_institution_id = mysqli_query($link, $sql_institution_id);
+// 假设 $account 是传入的用户账号
 
-if ($row = mysqli_fetch_assoc($result_institution_id)) {
-    $institution_id = $row['institution_id'];
+// 先查找用户的类型（管理员或者医疗机构）
+$sql_user_type = "SELECT user_type FROM user WHERE account = '" . mysqli_real_escape_string($link, $account) . "'";
+$result_user_type = mysqli_query($link, $sql_user_type);
+
+// 检查用户类型
+if ($row = mysqli_fetch_assoc($result_user_type)) {
+    $user_type = $row['user_type'];
+
+    // 如果是管理员（假设管理员的 user_type 是 'admin'）
+    if ($user_type == 'admin') {
+        $institution_id = '12345678';
+    } else {
+        // 否则查询医院的 institution_id
+        $sql_institution_id = "SELECT institution_id FROM hospital WHERE account = '" . mysqli_real_escape_string($link, $account) . "'";
+        $result_institution_id = mysqli_query($link, $sql_institution_id);
+
+        if ($row = mysqli_fetch_assoc($result_institution_id)) {
+            $institution_id = $row['institution_id'];
+        } else {
+            die('找不到機構。');
+        }
+    }
 } else {
-    die('找不到機構。');
+    die('找不到該用戶。');
 }
+
+
 
 $activities = [];
 $sql_all_activities = "SELECT * FROM activity WHERE institution_id = '$institution_id'";
@@ -320,11 +341,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         </div>
         <div class="card-container">
             <?php if (empty($activities)): ?>
-                <div class="s3-card">
-                    <div class="s3-card-left">
-                        <h3>尚無活動</h3>
-                    </div>
-                </div>
             <?php else: ?>
                 <?php
                 // 定義顏色對應

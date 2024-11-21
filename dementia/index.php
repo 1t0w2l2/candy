@@ -16,7 +16,7 @@ $id = isset($_SESSION['institution_id']) ? $_SESSION['institution_id'] : '';
 
 <body>
 
-   <?php include "nav.php"; ?>
+    <?php include "nav.php"; ?>
 
     <div id="app">
         <div id="map" style="top: 14%">
@@ -94,7 +94,8 @@ $id = isset($_SESSION['institution_id']) ? $_SESSION['institution_id'] : '';
                                                         <div v-for="hour in hours" :key="hour.service_hour_id">
                                                             <span
                                                                 v-if="hour.open_time === '00:00:00' && hour.close_time === '00:00:00'">休息</span>
-                                                                <span v-else-if="hour.open_time === '00:00:00' && hour.close_time ==='24:00:00'">24小時營業</span>
+                                                            <span
+                                                                v-else-if="hour.open_time === '00:00:00' && hour.close_time ==='24:00:00'">24小時營業</span>
                                                             <span v-else>{{ formatTime(hour.open_time) }} - {{
                                                                 formatTime(hour.close_time) }}</span>
                                                         </div>
@@ -933,6 +934,10 @@ $id = isset($_SESSION['institution_id']) ? $_SESSION['institution_id'] : '';
             });
         </script>
 
+
+
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
         <script src="js/custom.js"></script>
 
