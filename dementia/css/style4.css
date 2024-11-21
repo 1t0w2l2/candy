@@ -1,0 +1,261 @@
+
+.a1-container {
+    display: flex;
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: -100px;
+}
+
+
+.left-panel {
+    width: 25%;
+    background-color: #fff;
+    padding: 20px;
+    border-right: 1px solid #e0e0e0;
+    margin-top: 60px;
+}
+
+.left-panel h2 {
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 20px;
+    position: relative;
+    top: -15px;
+}
+
+.right-panel {
+    width: 75%;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 50px;
+    margin-bottom: 30px;
+    white-space: nowrap;
+}
+
+.calendar-header h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #333;
+}
+
+.nav-arrows {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.arrow {
+    font-size: 2rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.arrow:hover {
+    color: #007bff;
+    transform: scale(1.2);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    width: 100%;
+    margin-top: -30px;
+}
+
+.calendar-grid div {
+    text-align: center;
+    padding: 10px;
+    color: #333;
+    background-color: #f9f9f9;
+    font-size: 16px;
+    height: 90px;
+    width: 90px;
+    border-radius: 10px;
+    cursor: pointer;
+    line-height: 90px;
+    position: relative;
+}
+
+.calendar-grid div .circle {
+    position: absolute;
+    top: 1%;
+    right: 5%;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+    color: black;
+}
+
+.calendar-grid div.today {
+    background-color: #f9f9f9;
+}
+
+.calendar-grid div.today .circle {
+    border: 2px solid #007bff;
+}
+
+.weekdays {
+    color: #333;
+    font-weight: bold;
+    margin: 0;
+    text-align: center;
+}
+
+.return-today {
+    border: 0;
+    background-color: #4A608A;
+    color: #fff;
+    border-radius: 10px;
+    margin-top: 60px;
+    display: none;
+    position: absolute;
+    top: 90px;
+    right: 100px;
+    padding: 10px 10px;
+    font-size: 14px;
+}
+
+#addEvent {
+    font-size: 25px;
+    background: none;
+    border: none;
+    color: black;
+    cursor: pointer;
+    margin-left: 230px;
+    position: relative;
+    top: -40px;
+}
+
+.event-form {
+    margin-top: 20px;
+    display: none;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.event-form input,
+.event-form select {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.event-form button {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.event-form button:hover {
+    background-color: #0056b3;
+}
+
+/* 預設隱藏選單選項 */
+.add-options {
+    display: none;
+    position: absolute;
+    top: 170px;
+    /* 調整選單顯示在按鈕下方 */
+    left: 25%;
+    /* 讓選單水平對齊在按鈕的中間 */
+    transform: translateX(-50%);
+    /* 使選單完全居中 */
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 5px 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    list-style: none;
+}
+
+.add-options li {
+    margin: 5px 0;
+}
+
+/* 新增行程/日記選項（僅顯示文字） */
+.add-options button {
+    background: none;
+    border: none;
+    color: inherit;
+    /* 使用預設文字顏色 */
+    padding: 0;
+    font: inherit;
+    /* 保持與其他文字樣式一致 */
+    cursor: pointer;
+}
+
+.add-diary-btn {
+    text-decoration: none;
+    /* 去掉底線 */
+    color: inherit;
+    /* 繼承父元素的文字顏色 */
+}
+
+.activities-list {
+    padding: 0;
+    /* 去掉內邊距 */
+    margin: 0;
+    /* 去掉外邊距 */
+}
+
+.event-frame {
+    background-color: #d9d9d9;
+    padding: 10px;
+    margin: 15px 0 !important;
+    /* 強制保持間距 */
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    text-align: left;
+}
+
+
+.event-frame {
+    position: relative;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+}
+
+.edit-icon {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    cursor: pointer;
+}
+
+.close {
+    background: none; /* 去掉背景顏色 */
+    border: none; /* 去掉邊框 */
+    font-size: 30px; /* 調整字體大小以放大按鈕 */
+    color: #000; /* 設定字體顏色（可以根據需要調整） */
+    padding: 0; /* 去掉內邊距 */
+    cursor: pointer; /* 改變鼠標指針樣式 */
+}
+
+
