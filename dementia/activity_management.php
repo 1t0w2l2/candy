@@ -9,8 +9,6 @@ if (empty($account)) {
     exit();
 }
 
-// 獲取 institution_id
-// 假设 $account 是传入的用户账号
 
 // 先查找用户的类型（管理员或者医疗机构）
 $sql_user_type = "SELECT user_type FROM user WHERE account = '" . mysqli_real_escape_string($link, $account) . "'";
@@ -20,28 +18,18 @@ $result_user_type = mysqli_query($link, $sql_user_type);
 if ($row = mysqli_fetch_assoc($result_user_type)) {
     $user_type = $row['user_type'];
 
-    // 如果是管理员（假设管理员的 user_type 是 'admin'）
-    if ($user_type == 'admin') {
-        $institution_id = '12345678';
-    } else {
-        // 否则查询医院的 institution_id
-        $sql_institution_id = "SELECT institution_id FROM hospital WHERE account = '" . mysqli_real_escape_string($link, $account) . "'";
-        $result_institution_id = mysqli_query($link, $sql_institution_id);
+    if ($user_type == 'admin' || $user_type == 'hospital') {
 
-        if ($row = mysqli_fetch_assoc($result_institution_id)) {
-            $institution_id = $row['institution_id'];
-        } else {
-            die('找不到機構。');
-        }
+    } else {
+        die('此帳號類型無法使用活動管理功能');
     }
-} else {
-    die('找不到該用戶。');
 }
 
 
 
+
 $activities = [];
-$sql_all_activities = "SELECT * FROM activity WHERE institution_id = '$institution_id'";
+$sql_all_activities = "SELECT * FROM activity WHERE account = '$account'";
 $result_all_activities = mysqli_query($link, $sql_all_activities);
 
 // 獲取所有活動
@@ -88,8 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $activityId = $row['activity_id']; // 使用現有的活動ID
     } else {
         // 準備插入活動資料的 SQL 語句
-        $sql_insert_activity = "INSERT INTO activity (activity_name, description, start_time, end_time, location, address, registration_deadline, max_participants, contact_person, contact_phone, institution_id, status) 
-                                VALUES ('$activityName', '$description', '$startTime', '$endTime', '$location', '$address', '$registrationDeadline', $maxParticipants, '$contactPerson', '$contactPhone', '$institution_id', '$status')";
+        $sql_insert_activity = "INSERT INTO activity (activity_name, description, start_time, end_time, location, address, registration_deadline, max_participants, contact_person, contact_phone, account, status) 
+                                VALUES ('$activityName', '$description', '$startTime', '$endTime', '$location', '$address', '$registrationDeadline', $maxParticipants, '$contactPerson', '$contactPhone', '$account', '$status')";
 
         if (!mysqli_query($link, $sql_insert_activity)) {
             die("執行失敗: " . mysqli_error($link));
@@ -174,7 +162,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     // 提交成功訊息並導向
-    echo "rt('活動新增成功'); window.location.href = 'activity_management.php';</script>";
+    echo "<script>alert('活動新增成功'); window.location.href = 'activity_management.php';</script>";
+
 }
 
 // 處理編輯請求
@@ -255,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // 刪除活動
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
     $activity_id = intval($_POST['activity_id']);
-    $sql_delete = "DELETE FROM activity WHERE activity_id = '$activity_id' AND institution_id = '$institution_id'";
+    $sql_delete = "DELETE FROM activity WHERE activity_id = '$activity_id' AND account = '$account'";
 
     if (mysqli_query($link, $sql_delete)) {
         echo "<script>alert('活動刪除成功'); window.location.href = 'activity_management.php';</script>";
@@ -271,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $start_time = mysqli_real_escape_string($link, isset($_POST['start_time']) ? $_POST['start_time'] : '');
     $end_time = mysqli_real_escape_string($link, isset($_POST['end_time']) ? $_POST['end_time'] : '');
 
-    $sql_search = "SELECT * FROM activity WHERE institution_id = '$institution_id'";
+    $sql_search = "SELECT * FROM activity WHERE account = '$account'";
 
     if (!empty($search_input)) {
         $sql_search .= " AND (activity_name LIKE '%$search_input%' OR description LIKE '%$search_input%' OR location LIKE '%$search_input%' OR registration_deadline LIKE '%$search_input%' OR max_participants LIKE '%$search_input%' OR contact_person LIKE '%$search_input%' OR contact_phone LIKE '%$search_input%' OR status LIKE '%$search_input%')";

@@ -139,41 +139,44 @@ if ($result) {
         </div>
 
         <div class="results-section">
-            <?php if (!empty($activities)): ?>
-                <?php foreach ($activities as $activity): ?>
-                    <div class="result-card" style="display: flex; align-items: flex-start; margin-bottom: 20px;">
-                        <div style="flex: 0 0 150px; margin-right: 15px;">
-                            <img src="<?php echo htmlspecialchars('./activity/' . $activity['activity_image_name']); ?>"
-                                 alt="<?php echo htmlspecialchars($activity['activity_name']); ?>"
-                                 style="width: 100%; height: auto; border-radius: 5px;">
-                        </div>
-                        <div style="flex: 1;">
-                            <div class="card-header">
-                                <h3><?php echo htmlspecialchars($activity['activity_name']); ?></h3>
-                                <span class="location"><?php echo htmlspecialchars($activity['registered_count']); ?>/<?php echo htmlspecialchars($activity['max_participants']); ?></span>
-                            </div>
-                            <p>活動起訖：<?php echo htmlspecialchars($activity['start_time']); ?>~<?php echo htmlspecialchars($activity['end_time']); ?></p>
-                            <p>活動地點：<?php echo htmlspecialchars($activity['location']); ?>(地址：<?php echo htmlspecialchars($activity['address']); ?>)</p>
-                            <p>報名截止時間：<?php echo htmlspecialchars($activity['registration_deadline']); ?></p>
-                            <div style="text-align: right;">
-                                <?php if ($activity['registered_count'] >= $activity['max_participants']): ?>
-                                    <span class="btn danger" style="color:red;">報名人數已達上限</span>
-                                <?php else: ?>
-                                    <form action="registration.php" method="POST" style="display: inline;">
-                                        <input type="hidden" name="activity_id"
-                                               value="<?php echo htmlspecialchars($activity['activity_id']); ?>">
-                                        <button type="submit" class="btn">報名</button>
-                                    </form>
-                                <?php endif; ?>
-                            </div>
-                        </div>
+    <?php if (!empty($activities)): ?>
+        <?php foreach ($activities as $activity): ?>
+            <div class="result-card" style="display: flex; align-items: flex-start; margin-bottom: 20px;">
+                <div style="flex: 0 0 150px; margin-right: 15px;">
+                    <img src="<?php echo htmlspecialchars('./activity/' . $activity['activity_image_name']); ?>"
+                         alt="<?php echo htmlspecialchars($activity['activity_name']); ?>"
+                         style="width: 100%; height: auto; border-radius: 5px;">
+                </div>
+                <div style="flex: 1;">
+                    <div class="card-header">
+                        <h3><?php echo htmlspecialchars($activity['activity_name']); ?></h3>
+                        <span class="location"><?php echo htmlspecialchars($activity['registered_count']); ?>/<?php echo htmlspecialchars($activity['max_participants']); ?></span>
                     </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="text-center">尚無活動可報名</div>
-            <?php endif; ?>
-        </div>
-    </div>
+                    <p>活動起訖：<?php echo htmlspecialchars($activity['start_time']); ?>~<?php echo htmlspecialchars($activity['end_time']); ?></p>
+                    <p>活動地點：<?php echo htmlspecialchars($activity['location']); ?>(地址：<?php echo htmlspecialchars($activity['address']); ?>)</p>
+                    <p>報名截止時間：<?php echo htmlspecialchars($activity['registration_deadline']); ?></p>
+                    <div style="text-align: right;">
+                        <?php if ($activity['registered_count'] >= $activity['max_participants']): ?>
+                            <span class="btn danger" style="color:red;">報名人數已達上限</span>
+                        <?php else: ?>
+                            <?php
+                            if (isset($_SESSION['account'])):
+                            ?>
+                                <form action="registration.php" method="POST" style="display: inline;">
+                                    <input type="hidden" name="activity_id" value="<?php echo htmlspecialchars($activity['activity_id']); ?>">
+                                    <button type="submit" class="btn">報名</button>
+                                </form>
+                            <?php endif; ?>
+                            <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <div class="text-center">尚無活動可報名</div>
+    <?php endif; ?>
+</div>
+
 </body>
 
 </html>
