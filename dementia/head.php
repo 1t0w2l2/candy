@@ -26,6 +26,7 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/style2.css">
 <link rel="stylesheet" href="css/style3.css">
+<link rel="stylesheet" href="css/style4.css">
 <link rel="stylesheet" href="css/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script src="js/jquery-3.4.1.min.js"></script>

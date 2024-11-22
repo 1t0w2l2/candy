@@ -73,7 +73,7 @@ if ($user_type == 'admin') {  // 管理員
                     <li class="has-children">
                         <a href="plan.php">行事曆</a>
                         <ul class="dropdown">
-                            <li><a href="activity_registration.php">日記</a></li>
+                            <li><a href="diary.php">日記</a></li>
                         </ul>
                     </li>
                     <li class="has-children">

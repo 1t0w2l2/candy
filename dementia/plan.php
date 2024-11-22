@@ -11,14 +11,14 @@ if (empty($account)) {
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] === 'add') {
     $date = $_POST['date'];
-    $event_name = $_POST['event_name'];
-    $event_type = $_POST['event_type'];
-    $event_time = $_POST['event_time'];
+    $plan_name = $_POST['plan_name'];
+    $plan_type = $_POST['plan_type'];
+    $plan_time = $_POST['plan_time'];
     $end_time = $_POST['end_time'];
     $remark = $_POST['remark'];
 
-    $sql_plan = "INSERT INTO plan (account, edit_account, event_type, event_name, date, event_time, end_time, remark) 
-                 VALUES ('$account', '$account', '$event_type', '$event_name', '$date', '$event_time', '$end_time', '$remark')";
+    $sql_plan = "INSERT INTO plan (account, edit_account, plan_type, plan_name, date, plan_time, end_time, remark) 
+                 VALUES ('$account', '$account', '$plan_type', '$plan_name', '$date', '$plan_time', '$end_time', '$remark')";
 
     if (mysqli_query($link, $sql_plan)) {
         echo "<script>alert('新增成功'); window.location.href = 'plan.php';</script>";
@@ -26,6 +26,53 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         echo "<script>alert('新增失敗: " . mysqli_error($link) . "');</script>";
     }
 }
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] === 'edit') {
+    if (isset($_POST['plan_id'], $_POST['plan_name'], $_POST['plan_name'], $_POST['plan_time'], $_POST['end_time'], $_POST['remark'])) {
+        $plan_id = $_POST['plan_id'];
+        $plan_name = $_POST['plan_name'];
+        $plan_time = $_POST['plan_time'];
+        $end_time = $_POST['end_time'];
+        $remark = $_POST['remark'];
+
+        // 使用 prepared statements 增加安全性
+        $stmt = $link->prepare("UPDATE `plan` SET `plan_name` = ?, `plan_time` = ?, `end_time` = ?, `remark` = ? WHERE `plan_id` = ?");
+        $stmt->bind_param("ssssi", $plan_name, $plan_time, $end_time, $remark, $plan_id);
+
+        if ($stmt->execute()) {
+            echo "success";  // 執行成功後回傳 success 給前端
+        } else {
+            echo "error: " . $stmt->error;  // 若執行失敗，回傳錯誤訊息
+        }
+
+
+        $stmt->close();
+    } else {
+        echo "error: 欄位遺漏";
+    }
+    exit;
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] === 'delete') {
+    if (isset($_POST['plan_id'])) {
+        $plan_id = $_POST['plan_id'];
+
+        // 使用 prepared statements 增加安全性
+        $stmt = $link->prepare("DELETE FROM `plan` WHERE `plan_id` = ?");
+        $stmt->bind_param("i", $plan_id);
+
+        if ($stmt->execute()) {
+            echo "success";  // 執行成功後回傳 success 給前端
+        } else {
+            echo "error: " . $stmt->error;  // 若執行失敗，回傳錯誤訊息
+        }
+
+        $stmt->close();
+    } else {
+        echo "error: 欄位遺漏";
+    }
+    exit;
+}
+
 
 // 設定日期
 if (isset($_POST['date'])) {
@@ -37,7 +84,7 @@ if (isset($_POST['date'])) {
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // 獲取所選日期的活動
     $selected_date = isset($_POST['date']) ? $_POST['date'] : date('Y-m-d'); // 如果沒有選擇日期，則使用今天的日期
-    $sql_fetch_events = "SELECT * FROM plan WHERE date = '$selected_date' and account='$account' ORDER BY event_time";
+    $sql_fetch_events = "SELECT * FROM plan WHERE date = '$selected_date' and account='$account' ORDER BY plan_time";
     $events_result = mysqli_query($link, $sql_fetch_events);
 
     // 將查詢結果存入 $play 陣列
@@ -47,7 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // 設定活動顏色對應表
-    $event_colors = [
+    $plan_colors = [
         '用藥提醒' => '#F1D3CE',    // 藤紅色
         '預約看診' => '#D1E9F6',     // 淺藍色
         '活動提醒' => '#C9E9D2',     // 淺綠色
@@ -57,18 +104,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!empty($play)) {
         foreach ($play as $event) {
             // 根據活動類型獲取顏色，若沒有設定的類型，預設為白色
-            $color = isset($event_colors[$event['event_type']]) ? $event_colors[$event['event_type']] : '#FFFFFF';
+            $color = isset($plan_colors[$event['plan_type']]) ? $plan_colors[$event['plan_type']] : '#FFFFFF';
 
-            // 行程顯示區域，加入編輯圖標
+            // 行程顯示區域
             echo '<div class="event-frame" style="position: relative; padding: 20px; margin: 5px 0; border-radius: 5px; background-color: ' . $color . ';">';
 
-            // 始終顯示編輯圖標，並添加 onclick 事件
-            echo '<i class="fa-solid fa-pen-to-square edit-icon" style="position: absolute; top: 5px; right: 5px; cursor: pointer;" onclick="populateEditForm(' . $event['plan_id'] . ', \'' . htmlspecialchars($event['event_name']) . '\', \'' . htmlspecialchars($event['event_time']) . '\', \'' . htmlspecialchars($event['end_time']) . '\', \'' . htmlspecialchars($event['remark']) . '\')"></i>';
-
             // 顯示行程的其他細節
-            echo '<strong>' . htmlspecialchars($event['event_name']) . '</strong><br>';
-            echo htmlspecialchars($event['event_time']) . ' - ' . htmlspecialchars($event['end_time']) . '<br>';
+            echo '<strong>' . htmlspecialchars($event['plan_name']) . '</strong><br>';
+            echo htmlspecialchars($event['plan_time']) . ' - ' . htmlspecialchars($event['end_time']) . '<br>';
             echo '<span class="event-remark">' . htmlspecialchars($event['remark']) . '</span>';
+
+            // 編輯圖示按鈕，按下時觸發編輯表單
+            echo '<i class="fa-solid fa-pen-to-square edit-icon" style="position: absolute; top: 5px; right: 5px; cursor: pointer;" onclick="populateEditForm(' . $event['plan_id'] . ', \'' . htmlspecialchars($event['plan_name']) . '\', \'' . htmlspecialchars($event['plan_time']) . '\', \'' . htmlspecialchars($event['end_time']) . '\', \'' . htmlspecialchars($event['remark']) . '\')"></i>';
+
             echo '</div>';
         }
     } else {
@@ -82,7 +130,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 // 如果不是 POST 請求，則顯示今天的行程
 if ($_SERVER["REQUEST_METHOD"] != "POST") {
     $today_date = date('Y-m-d');
-    $sql_fetch_events = "SELECT * FROM plan WHERE date = '$today_date' AND account='$account' ORDER BY event_time";
+    $sql_fetch_events = "SELECT * FROM plan WHERE date = '$today_date' AND account='$account' ORDER BY plan_time";
     $events_result = mysqli_query($link, $sql_fetch_events);
 
     // 將查詢結果存入 $play 陣列
@@ -91,7 +139,7 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
         $play[] = $row;
     }
     // 設定活動顏色對應表
-    $event_colors = [
+    $plan_colors = [
         '用藥提醒' => '#F1D3CE',    // 藤紅色
         '預約看診' => '#D1E9F6',     // 淺藍色
         '活動提醒' => '#C9E9D2',     // 淺綠色
@@ -99,22 +147,7 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
     ];
 
 }
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'edit') {
-    $event_id = mysqli_real_escape_string($link, $_POST['event_id']);
-    $event_name = mysqli_real_escape_string($link, $_POST['event_name']);
-    $event_time = mysqli_real_escape_string($link, $_POST['event_time']);
-    $end_time = mysqli_real_escape_string($link, $_POST['end_time']);
-    $remark = mysqli_real_escape_string($link, $_POST['remark']);
 
-    $sql_update = "UPDATE plan SET event_name='$event_name', event_time='$event_time', end_time='$end_time', remark='$remark' WHERE id='$event_id'";
-
-    if (mysqli_query($link, $sql_update)) {
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'message' => mysqli_error($link)]);
-    }
-    exit();
-}
 
 ?>
 
@@ -127,7 +160,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
 
 <body>
     <?php include "nav.php"; ?>
-
     <div class="a1-container">
         <div class="left-panel">
             <h5 id="selectedDate"><?php echo $date; ?> 行程</h5>
@@ -142,10 +174,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                     </li>
                 </ul>
             </div>
-            <button class="return-today" id="returnToday">返回今天</button>
+
 
             <!-- 新增行程的模態框 -->
-            <div class="modal fade" id="planModal" tabindex="-1" aria-labelledby="planModalLabel" aria-hidden="true">
+            <div class="modal fade" id="planModal" tabindex="-1" aria-labelledby="planModalLabel" aria-hidden="true"
+                data-bs-backdrop="static">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <form action="" method="post">
@@ -157,11 +190,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                             <div class="modal-body">
                                 <div class="mb-1">
                                     <label for="recipient-name" class="col-form-label">行程名稱:</label>
-                                    <input type="text" class="form-control" name="event_name" required>
+                                    <input type="text" class="form-control" name="plan_name" required>
                                 </div>
                                 <div class="mb-1">
                                     <label for="recipient-name" class="col-form-label">行程類型:</label>
-                                    <select class="form-control" name="event_type" required>
+                                    <select class="form-control" name="plan_type" required>
                                         <option>請選擇類型</option>
                                         <option value="用藥提醒">用藥提醒</option>
                                         <option value="預約看診">預約看診</option>
@@ -176,7 +209,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                                 </div>
                                 <div class="mb-1">
                                     <label for="myTime" class="col-form-label">行程開始時間</label>
-                                    <input type="time" name="event_time" class="form-control" required>
+                                    <input type="time" name="plan_time" class="form-control" required>
                                 </div>
                                 <div class="mb-1">
                                     <label for="myTime" class="col-form-label">行程結束時間</label>
@@ -206,32 +239,35 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
                             </button>
-
                         </div>
                         <div class="modal-body">
-                            <form id="editEventForm">
+                            <form id="editEventForm" method="POST" action="process_event.php">
+                                <!-- 隱藏欄位用來儲存日期 -->
+                                <input type="hidden" id="eventDateHidden" name="date">
+
+                                <!-- 行程 ID 隱藏欄位 -->
+                                <input type="hidden" id="plan_id" name="plan_id">
+
                                 <div class="mb-3">
                                     <label for="eventName" class="form-label">行程名稱</label>
-                                    <input type="text" class="form-control" id="eventName" name="event_name">
+                                    <input type="text" class="form-control" id="eventName" name="plan_name">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="eventTime" class="form-label">開始時間</label>
-                                    <input type="text" class="form-control" id="eventTime" name="event_time">
+                                    <label for="eventTime" class="form-label">行程開始時間</label>
+                                    <input type="time" class="form-control" id="eventTime" name="plan_time">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="endTime" class="form-label">結束時間</label>
-                                    <input type="text" class="form-control" id="endTime" name="end_time">
+                                    <label for="endTime" class="form-label">行程結束時間</label>
+                                    <input type="time" class="form-control" id="endTime" name="end_time">
                                 </div>
                                 <div class="mb-3">
                                     <label for="eventRemark" class="form-label">備註</label>
                                     <textarea class="form-control" id="eventRemark" name="remark"></textarea>
                                 </div>
-                                <input type="hidden" id="eventId" name="event_id">
-
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
-                            <button type="button" class="btn btn-primary" id="saveChangesBtn">儲存變更</button>
+                            <button type="button" class="btn btn-primary" value="edit" id="saveChangesBtn">儲存變更</button>
+                            <button type="button" class="btn btn-danger" value="delete" id="deleteBtn">刪除</button>
                         </div>
                         </form>
                     </div>
@@ -243,12 +279,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                     <div class="activities-list">
                         <?php if (!empty($play)): ?>
                             <?php foreach ($play as $event):
-                                $color = isset($event_colors[$event['event_type']]) ? $event_colors[$event['event_type']] : '#FFFFFF';
+                                $color = isset($plan_colors[$event['plan_type']]) ? $plan_colors[$event['plan_type']] : '#FFFFFF';
                                 ?>
                                 <div class="event-frame" style="background-color: <?php echo $color; ?>; position: relative;">
-                                    <i class="fa-solid fa-pen-to-square edit-icon"></i>
-                                    <strong><?php echo htmlspecialchars($event['event_name']); ?></strong><br>
-                                    <?php echo htmlspecialchars($event['event_time']) . ' - ' . htmlspecialchars($event['end_time']); ?><br>
+                                    <strong><?php echo htmlspecialchars($event['plan_name']); ?></strong><br>
+                                    <?php echo htmlspecialchars($event['plan_time']) . ' - ' . htmlspecialchars($event['end_time']); ?><br>
                                     <span class="event-remark"><?php echo htmlspecialchars($event['remark']); ?></span>
                                 </div>
                             <?php endforeach; ?>
@@ -268,8 +303,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                     <span class="arrow" id="prevMonth">‹</span>
                     <h2 id="monthYear">October 2024</h2>
                     <span class="arrow" id="nextMonth">›</span>
+                    <button class="return-today" id="returnToday">返回今天</button>
                 </div>
             </div>
+
 
             <div class="calendar-grid">
                 <div class="weekdays" style="background: none;">日</div>
@@ -369,13 +406,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                         }
                     };
                     xhr.send(`date=${date}`);
+                    let selectedDate = "selectedDate";  // 這是要作為金鑰名稱的日期
+                    // 儲存資料到 localStorage
+                    localStorage.setItem(selectedDate, date);  // 使用日期作為金鑰
+                    // 假設這是在選擇日期時更新 selectedDate
+                    localStorage.setItem('selectedDate', selectedDate.toISOString().split('T')[0]);
+
                 });
                 // 將圓形元素添加到日格
                 dayCell.appendChild(circleDiv);
                 calendarGrid.appendChild(dayCell);
             }
         }
-
 
         document.getElementById('prevMonth').addEventListener('click', () => {
             if (currentMonth === 0) {
@@ -398,7 +440,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             updateMonthYear();
             generateCalendar(currentYear, currentMonth);
         });
-
+        // 返回今天按鈕的點擊事件
         document.getElementById('returnToday').addEventListener('click', () => {
             currentYear = today.getFullYear();
             currentMonth = today.getMonth();
@@ -407,9 +449,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             // 更新選中的日期顯示
             document.getElementById('selectedDate').textContent = `${today.toISOString().split('T')[0]} 行程`;
 
+            // 清除 localStorage 中的 selectedDate
+            localStorage.removeItem('selectedDate');
+
             // 更新月份顯示和生成日曆
             updateMonthYear();
-            generateCalendar(currentYear, currentMonth);
+            generateCalendar(currentYear, currentMonth, { year: currentYear, month: currentMonth, day: selectedDate });
 
             // 隱藏返回今天按鈕
             document.getElementById('returnToday').style.display = 'none';
@@ -426,9 +471,64 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             };
             xhr.send(`date=${encodeURIComponent(today.toISOString().split('T')[0])}`);
         });
+        // 頁面加載時初始化
+        window.addEventListener('load', function () {
+            const today = new Date(); // 取得當前日期
+            const todayString = today.toISOString().split('T')[0]; // 格式：YYYY-MM-DD
+            const returnTodayButton = document.getElementById('returnToday');
+            let currentYear, currentMonth, selectedDate;
+
+            // 清除 localStorage 中的 selectedDate
+            localStorage.removeItem('selectedDate');
+
+            // 使用當前日期作為初始日期
+            currentYear = today.getFullYear();
+            currentMonth = today.getMonth();
+            selectedDate = today.getDate();
+
+            // 顯示當前日期
+            document.getElementById('selectedDate').textContent = `${todayString} 行程`;
+
+            // 隱藏返回今天按鈕
+            returnTodayButton.style.display = 'none';
+
+            // 生成日曆並顯示當前日期
+            generateCalendar(currentYear, currentMonth, { year: currentYear, month: currentMonth, day: selectedDate });
+
+            // 更新月份和年份顯示
+            updateMonthYear();
+
+            // 檢查 localStorage 中是否有選擇的日期，並更新返回今天按鈕顯示狀態
+            checkReturnTodayButton();
+        });
 
 
 
+        // 點擊 "返回今天" 按鈕的事件
+        document.getElementById('returnToday').addEventListener('click', function () {
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0]; // 格式：YYYY-MM-DD
+            const returnTodayButton = document.getElementById('returnToday');
+
+            // 更新顯示為今天的日期
+            document.getElementById('selectedDate').textContent = `${todayString} 行程`;
+
+            // 清除 localStorage 中的選擇日期
+            localStorage.removeItem('selectedDate');
+
+            // 隱藏返回今天按鈕
+            returnTodayButton.style.display = 'none';
+
+            // 重新生成日曆
+            generateCalendar(today.getFullYear(), today.getMonth(), {
+                year: today.getFullYear(),
+                month: today.getMonth(),
+                day: today.getDate()
+            });
+
+            // 更新月份和年份顯示
+            updateMonthYear();
+        });
         document.addEventListener("DOMContentLoaded", function () {
             const addEventButton = document.getElementById("addEvent");
             const addOptions = document.querySelector(".add-options");
@@ -443,23 +543,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                 addOptions.style.display = "none";
             });
         });
+
         document.getElementById('addSchedule').addEventListener('click', function () {
             const eventForm = document.getElementById('eventForm');
             eventForm.style.display = eventForm.style.display === 'none' ? 'block' : 'none';
         });
+
         updateMonthYear();
         generateCalendar(currentYear, currentMonth);
 
-        function populateEditForm(eventId, eventName, eventTime, endTime, eventRemark) {
+        function populateEditForm(plan_id, eventName, eventTime, endTime, eventRemark) {
             const formElements = {
-                eventId: document.getElementById('eventId'),
+                plan_id: document.getElementById('plan_id'),
                 eventName: document.getElementById('eventName'),
                 eventTime: document.getElementById('eventTime'),
                 endTime: document.getElementById('endTime'),
                 eventRemark: document.getElementById('eventRemark')
             };
 
-            formElements.eventId.value = eventId;
+            formElements.plan_id.value = plan_id;
             formElements.eventName.value = eventName;
             formElements.eventTime.value = eventTime;
             formElements.endTime.value = endTime;
@@ -471,23 +573,77 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
         }
 
         document.getElementById('saveChangesBtn').addEventListener('click', function () {
-            const form = document.getElementById('editEventForm');
-            // 在這裡可以添加儲存邏輯，例如發送到伺服器
-            // 假設儲存成功後再關閉模態視窗
-            if (form.checkValidity()) {
-                // 這裡可以添加儲存的 AJAX 請求或其他操作
-                console.log('儲存變更：', new FormData(form));
-                // 關閉模態視窗
-                var modal = bootstrap.Modal.getInstance(document.getElementById('editEventModal'));
-                modal.hide();
-            } else {
-                form.reportValidity(); // 顯示驗證錯誤
-            }
+            const selectedDate = document.getElementById('selectedDate').textContent.split(' ')[0]; // 假設 selectedDate 顯示的是 YYYY-MM-DD 格式
+            localStorage.setItem('selectedDate', selectedDate); // 儲存選擇的日期
+
+            // 送出表單資料
+            var form = document.getElementById('editEventForm');
+            var formData = new FormData(form);
+            formData.append('action', 'edit');
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '', true);
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    if (xhr.responseText.trim() === 'success') {
+                        alert('儲存成功');
+                        location.reload(); // 刷新頁面
+                    } else {
+                        alert('錯誤: ' + xhr.responseText);
+                    }
+                } else {
+                    alert('錯誤: ' + xhr.statusText);
+                }
+            };
+            xhr.send(formData);
         });
 
 
 
+        document.getElementById('deleteBtn').addEventListener('click', function () {
+            // 顯示確認對話框
+            var confirmation = confirm("是否確定刪除此行程？");
 
+            if (confirmation) {
+                var form = document.getElementById('editEventForm');
+                var formData = new FormData(form); // 收集表單數據
+                formData.append('action', 'delete'); // 添加刪除操作標識
+
+                // 使用 getElementsByName 獲取隱藏欄位的值
+                var eventDateHiddenCollection = document.getElementsByName('date'); // 返回 HTMLCollection
+                if (eventDateHiddenCollection.length > 0) {
+                    var eventDate = eventDateHiddenCollection[0].value; // 取得第一個元素的值
+                    console.log('刪除的行程日期:', eventDate);
+                } else {
+                    console.error('找不到任何 date 欄位');
+                    return; // 終止操作，避免發送錯誤請求
+                }
+
+                // 儲存刪除的日期到 Local Storage
+                if (eventDate) {
+                    localStorage.setItem('lastDeletedEventDate', eventDate);
+                }
+
+                // 發送 AJAX 請求
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '', true); // 假設後端處理刪除的 URL 是空（根據實際情況修改）
+
+                xhr.onload = function () {
+                    if (xhr.status === 200) {
+                        if (xhr.responseText.trim() === 'success') {
+                            alert('刪除成功');
+                            location.reload(); // 刷新頁面並停留在刪除的日期
+                        } else {
+                            alert('錯誤: ' + xhr.responseText);
+                        }
+                    } else {
+                        alert('錯誤: ' + xhr.statusText);
+                    }
+                };
+
+                xhr.send(formData); // 發送刪除請求
+            }
+        });
 
 
     </script>
