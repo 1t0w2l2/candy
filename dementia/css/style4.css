@@ -286,3 +286,6 @@ html, body {
     overflow: visible !important;
 }
 
+#addSchedule {
+    z-index: 9999;
+}

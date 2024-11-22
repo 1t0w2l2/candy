@@ -389,12 +389,13 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
                     circleDiv.style.backgroundColor = '#007bff';
                     circleDiv.style.color = 'white';
 
+                    if (date !== `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`) {
+                        document.getElementById('returnToday').style.display = 'block';
+                    } else {
+                        document.getElementById('returnToday').style.display = 'none';
+                    }
 
-
-
-                    // 存儲選中的日期到 localStorage
-                    localStorage.setItem('selectedDate', date);
-                    // 發送 AJAX 請求獲取該日期的活動
+                    // AJAX 請求來獲取該日期的活動
                     const xhr = new XMLHttpRequest();
                     xhr.open("POST", "", true);
                     xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -405,8 +406,7 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
                     };
                     xhr.send(`date=${date}`);
                 });
-
-                // 添加圓形元素到日格
+                // 將圓形元素添加到日格
                 dayCell.appendChild(circleDiv);
                 calendarGrid.appendChild(dayCell);
             }
@@ -562,37 +562,26 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
             });
 
 
-            document.addEventListener("click", function () {
-                addOptions.style.display = "none";
-            });
+
         });
 
-        document.addEventListener("DOMContentLoaded", function () {
-    const addEventButton = document.getElementById("addEvent");
-    const addOptions = document.querySelector(".add-options");
 
-    // 點擊新增事件按鈕顯示/隱藏選項
-    if (addEventButton && addOptions) {
-        addEventButton.addEventListener("click", function (event) {
-            event.stopPropagation(); // 防止事件冒泡
-            const isHidden = addOptions.style.display === "none" || addOptions.style.display === "";
-            addOptions.style.display = isHidden ? "block" : "none"; // 切換選項顯示狀態
-        });
-    }
+        // 如果 localStorage 有儲存日期，設定為選中日期
+        const storedDate = localStorage.getItem("selectedDate");
+        if (storedDate) {
+            selectedDateElement.textContent = `${storedDate} 的行程`; // 更新顯示的日期
+            updateActivitiesList(storedDate); // 根據日期更新行程列表
+        }
 
-    // 點擊頁面其他區域隱藏選項
-    document.addEventListener("click", function () {
-        if (addOptions) addOptions.style.display = "none";
-    });
-});
 
-        // 新增行程
         document.getElementById('addSchedule').addEventListener('click', function () {
             const eventForm = document.getElementById('eventForm');
             eventForm.style.display = eventForm.style.display === 'none' ? 'block' : 'none';
         });
 
-        // 編輯行程
+        updateMonthYear();
+        generateCalendar(currentYear, currentMonth);
+
         function populateEditForm(plan_id, eventName, eventTime, endTime, eventRemark) {
             const formElements = {
                 plan_id: document.getElementById('plan_id'),
@@ -613,56 +602,80 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
             editModal.show();
         }
 
-        
-        // 儲存變更
-        document.getElementById('saveChangesBtn').addEventListener('click', function () {
-            var form = document.getElementById('editEventForm');
-            var formData = new FormData(form);
 
-            // 添加 action 欄位來指定操作類型
-            formData.append('action', 'edit');
 
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '', true);
-            xhr.onload = function () {
-                if (xhr.status === 200) {
-                    if (xhr.responseText.trim() === 'success') {
-                        alert('儲存成功');
+        document.addEventListener("DOMContentLoaded", function () {
+            // 初始化新增行程按鈕功能
+            initializeAddEventButton();
 
-                        // 關閉表單（隱藏模態框）
-                        var modal = document.getElementById('editEventModal'); // 假設你的模態框 ID 是 editEventModal
-                        
-                        if (modal) {
-                            modal.style.display = 'none'; // 隱藏模態框
-                        }
+            // 儲存變更
+            document.getElementById('saveChangesBtn').addEventListener('click', function () {
+                var form = document.getElementById('editEventForm');
+                var formData = new FormData(form);
 
-                        // 獲取當前選擇的日期
-                        const selectedDate = document.getElementById('selectedDate').textContent.split(' ')[0];
+                // 添加 action 欄位來指定操作類型
+                formData.append('action', 'edit');
 
-                        // 發送 AJAX 請求來獲取最新行程資料
-                        const updateXhr = new XMLHttpRequest();
-                        updateXhr.open('POST', 'plan.php', true);
-                        updateXhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                        updateXhr.onload = function () {
-                            if (updateXhr.status === 200) {
-                                // 更新行程列表為最新資料
-                                document.querySelector('.activities-list').innerHTML = updateXhr.responseText;
-                            } else {
-                                alert('行程更新失敗: ' + updateXhr.statusText);
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '', true);
+                xhr.onload = function () {
+                    if (xhr.status === 200) {
+                        if (xhr.responseText.trim() === 'success') {
+                            alert('儲存成功');
+
+                            // 關閉表單（隱藏模態框）
+                            var modal = document.getElementById('editEventModal'); // 假設你的模態框 ID 是 editEventModal
+                            if (modal) {
+                                modal.style.display = 'none'; // 隱藏模態框
                             }
-                        };
-                        updateXhr.send(`date=${encodeURIComponent(selectedDate)}`);
+
+                            // 獲取當前選擇的日期
+                            const selectedDate = document.getElementById('selectedDate').textContent.split(' ')[0];
+
+                            // 發送 AJAX 請求來獲取最新行程資料
+                            const updateXhr = new XMLHttpRequest();
+                            updateXhr.open('POST', 'plan.php', true);
+                            updateXhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                            updateXhr.onload = function () {
+                                if (updateXhr.status === 200) {
+                                    // 更新行程列表為最新資料
+                                    document.querySelector('.activities-list').innerHTML = updateXhr.responseText;
+                                } else {
+                                    alert('行程更新失敗: ' + updateXhr.statusText);
+                                }
+                            };
+                            updateXhr.send(`date=${encodeURIComponent(selectedDate)}`);
+                        } else {
+                            alert('錯誤: ' + xhr.responseText); // 顯示後端錯誤訊息
+                        }
                     } else {
-                        alert('錯誤: ' + xhr.responseText); // 顯示後端錯誤訊息
+                        alert('錯誤: ' + xhr.statusText);
                     }
-                } else {
-                    alert('錯誤: ' + xhr.statusText);
-                }
-            };
-            xhr.send(formData); // 送出表單資料
+                };
+                xhr.send(formData); // 送出表單資料
+            });
         });
 
+        // 初始化新增行程按鈕
+        function initializeAddEventButton() {
+            const addEventButton = document.getElementById("addEvent");
+            const addOptions = document.querySelector(".add-options");
 
+            // 顯示/隱藏新增行程選項
+            addEventButton.addEventListener("click", function (event) {
+                event.stopPropagation();
+                const isHidden = addOptions.style.display === "none" || addOptions.style.display === "";
+                addOptions.style.display = isHidden ? "block" : "none";
+            });
+
+            // 點擊其他地方隱藏新增行程選項
+            document.addEventListener("click", function () {
+                addOptions.style.display = "none";
+            });
+        }
+
+
+        // 刪除行程
         document.getElementById('deleteBtn').addEventListener('click', function () {
             // 顯示確認對話框
             var confirmation = confirm("是否確定刪除此行程？");
@@ -672,61 +685,33 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
                 var formData = new FormData(form);  // 收集表單數據
                 formData.append('action', 'delete');  // 添加刪除操作標識
 
-                // 獲取隱藏的日期欄位
-                var eventDateHidden = document.querySelector('#eventDateHidden');
-                var eventDate = eventDateHidden ? eventDateHidden.value : null;
+                // 檢查 formData 中的所有資料
+                for (var pair of formData.entries()) {
+                    console.log(pair[0] + ': ' + pair[1]);  // 顯示 formData 中的所有資料
+                }
 
-                if (eventDate) {
+                // 獲取隱藏的日期欄位
+                var eventDateHidden = document.querySelector('#eventDateHidden');  // 使用 querySelector
+                if (eventDateHidden) {
+                    var eventDate = eventDateHidden.value;  // 獲取隱藏欄位的值
                     console.log('刪除的行程日期:', eventDate);  // 檢查 eventDate 是否正確
-                    // 儲存刪除的日期到 Local Storage
-                    localStorage.setItem('lastDeletedEventDate', eventDate);
+
+                    if (eventDate) {
+                        // 儲存刪除的日期到 Local Storage
+                        localStorage.setItem('lastDeletedEventDate', eventDate);
+                    }
                 } else {
                     console.error('找不到 eventDateHidden 元素');
                 }
 
                 var xhr = new XMLHttpRequest();
-                xhr.open('POST', 'plan.php', true);  // 根據實際情況修改後端處理 URL
+                xhr.open('POST', '', true);  // 假設後端處理刪除的 URL 是空（根據實際情況修改）
 
                 xhr.onload = function () {
                     if (xhr.status === 200) {
                         if (xhr.responseText.trim() === 'success') {
                             alert('刪除成功');
-
-                            // 刪除成功後立即更新行程列表
-                            const updateXhr = new XMLHttpRequest();
-                            updateXhr.open('POST', 'plan.php', true);
-                            updateXhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                            updateXhr.onload = function () {
-                                if (updateXhr.status === 200) {
-                                    // 更新行程列表為最新資料
-                                    document.querySelector('.activities-list').innerHTML = updateXhr.responseText;
-
-                                    // 若當前日期沒有行程，顯示空的行程訊息
-                                    if (!updateXhr.responseText.trim()) {
-                                        document.querySelector('.activities-list').innerHTML =
-                                            '<div class="no-events">此日期無行程</div>';
-                                    }
-
-                                    // 滾動到刪除的日期
-                                    const selectedDate = localStorage.getItem('lastDeletedEventDate') || eventDate;
-                                    const selectedDateElement = document.querySelector(`[data-date="${selectedDate}"]`);
-                                    if (selectedDateElement) {
-                                        selectedDateElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                    }
-                                } else {
-                                    alert('行程更新失敗: ' + updateXhr.statusText);
-                                }
-                            };
-
-                            // 發送選定的日期到後端以更新資料
-                            const selectedDate = localStorage.getItem('lastDeletedEventDate') || eventDate;
-                            updateXhr.send(`date=${encodeURIComponent(selectedDate)}`);
-
-                            // 關閉表單（隱藏模態框）
-                            var modal = document.getElementById('editEventModal'); // 假設模態框的 ID 是 editEventModal
-                            if (modal) {
-                                modal.style.display = 'none'; // 隱藏模態框
-                            }
+                            location.reload();  // 刷新頁面
                         } else {
                             alert('錯誤: ' + xhr.responseText);
                         }
@@ -738,7 +723,6 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
                 xhr.send(formData);  // 發送刪除請求
             }
         });
-
 
 
     </script>
