@@ -10,8 +10,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $phone = $_POST['phone'];
     $address = $_POST['address'];
     $userType = $_POST['usertype'];
-    $institution_id = $_POST['institution_id'] ?? null;
-    $institution_name = $_POST['institution_name'] ?? null;
+    $institution_id = isset($_POST['institution_id']) ? $_POST['institution_id'] : null;
+    $institution_name = isset($_POST['institution_name']) ? $_POST['institution_name'] : null;
+
 
     try {
         // 檢查帳號是否已存在
@@ -146,12 +147,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 // 插入成功後，返回 hospital 訊息
                 echo json_encode(['status' => 'success', 'message' => '帳號已成功新增']);
-            }else{
+            } else {
                 // 若不存在，則回傳 hospital 訊息
                 echo json_encode(['status' => 'success', 'message' => 'hospital']);
             }
-        }else{
-            echo json_encode(['status' => 'error', 'message' => '發生錯誤，請稍後再試']);
+        } elseif ($userType === 'admin') {
+            $stmt = $link->prepare("INSERT INTO user (account, password, email, name, sex, phone, address, user_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssssss", $account, $password, $email, $name, $sex, $phone, $address, $userType);
+            $stmt->execute();
+
+            echo json_encode(['status' => 'success', 'message' => '帳號已成功新增']);
+
+        } else {
+            echo json_encode(['status' => 'error', 'message' => '發生錯誤，請稍後再試456']);
         }
 
 

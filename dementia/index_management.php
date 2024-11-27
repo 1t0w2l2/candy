@@ -13,23 +13,17 @@ include 'db.php';
     <style>
         html,
         body {
-            height: 100%;
             margin: 0;
             padding: 0;
         }
 
-        body {
-            font-family: Arial, sans-serif;
-            flex-direction: column;
-            min-height: 100vh;
-        }
 
         .custom-container {
             display: flex;
             width: 100%;
             flex-grow: 1;
             height: calc(100% - 76px);
-            margin-top:6%;
+            margin-top: 5%;
         }
 
         /* 左側選單 */
@@ -74,7 +68,6 @@ include 'db.php';
         .custom-menu-item:hover {
             background-color: #C7C2AB;
             color: #fff;
-
         }
 
         .custom-support {
@@ -604,7 +597,6 @@ include 'db.php';
         .bi-plus {
             cursor: pointer;
             color: #007bff;
-            /* 修改新增圖標的顏色 */
         }
 
         /* 為每個時間段的容器設置基本樣式 */
@@ -1148,13 +1140,49 @@ include 'db.php';
                         type: 'POST',
                         data: { account },
                         success: function (response) {
-                            $('#accountModal .modal-body').html(response);
+                            $('#accountModal .modal-body').html(response.replace(/<a .*?>/g, ''));
+
 
                             $('#editAccountButton').on('click', submitEditForm);
                             $('#deleteAccountButton').on('click', confirmDelete);
                         }
                     });
                 });
+
+                $('#accountModal').on('click', '.delete-acc-button', function () {
+                    // 取得要刪除的帳號
+                    const accinfo = $(this).data('accinfo');
+                    const account = $(this).data('account'); //患者帳號
+                    const caregiver = $(this).data('caregiver'); //照護者id
+
+                    // 彈出確認對話框
+                    if (confirm('確定要刪除帳號 ' + accinfo + '與' + account + '的關聯嗎？')) {
+                        // 發送 AJAX 請求到 PHP 來處理刪除操作
+                        $.ajax({
+                            url: 'delete_association.php',
+                            type: 'POST',
+                            data: {
+                                account: account,       // 傳送患者帳號
+                                caregiver: caregiver    // 傳送照護者ID
+                            },
+                            success: function (response) {
+                                // 將 PHP 回傳的 JSON 字串解析為 JavaScript 對象
+                                const data = JSON.parse(response);
+
+                                if (data.success) {
+                                    alert(data.message); // 成功訊息
+                                } else {
+                                    alert(data.message); // 錯誤訊息
+                                }
+                            },
+                            error: function () {
+                                alert('關聯刪除請求失敗，請稍後再試');
+                            }
+                        });
+                    }
+                });
+
+
 
                 // 提交編輯表單
                 function submitEditForm() {
@@ -1234,7 +1262,7 @@ include 'db.php';
                 // 確認刪除帳號
                 function confirmDelete() {
                     const userType = $('#accountModal .modal-body').find('[name="userType"]').val();
-                    console.log('帳號類別',userType)
+                    console.log('帳號類別', userType)
                     const confirmMessage = userType === 'hospital' ?
                         "該動作僅刪除帳號，該醫療機構資訊仍會顯示在網頁上。你確定嗎？" :
                         "你確定要刪除這個帳號嗎？";
@@ -1251,7 +1279,7 @@ include 'db.php';
                                     alert("帳號刪除成功！");
                                     $('#accountModal').modal('hide');
                                     location.reload();
-                                }else if (res.status === 'error') {
+                                } else if (res.status === 'error') {
                                     alert("刪除失敗，錯誤訊息: " + res.message);
                                     console.error('Error message:', res.message);
                                 } else {
@@ -1272,6 +1300,7 @@ include 'db.php';
 
                     modal.find('.modal-title').text('詳細資訊 - ' + institutionName);
                     $('#approve-button').data('institution-id', institutionId);
+                    $('#reject-button').data('institution-id', institutionId);
 
                     $.ajax({
                         url: 'get_institution_info.php',
@@ -1296,8 +1325,10 @@ include 'db.php';
                     const institutionId = button.data('institution-id');
                     if (!institutionId) return alert('無效的 institution ID');
 
-                    button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 正在發送email通知...');
                     const otherButton = action === 'approve' ? $('#reject-button') : $('#approve-button');
+
+                    button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 處理中...');
+                    otherButton.prop('disabled', true);
 
                     $.ajax({
                         url: 'approve_institution.php',
@@ -1306,7 +1337,6 @@ include 'db.php';
                         success: function (response) {
                             const res = JSON.parse(response);
                             if (res.status === 'success') {
-                                otherButton.prop('disabled', true).text(disableText);
                                 location.reload();
                                 $('#exampleModal').modal('hide');
 

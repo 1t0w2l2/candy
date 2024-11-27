@@ -240,9 +240,10 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
                                 <span aria-hidden="true">&times;</span>
                             </button>
                         </div>
-                        <div class="modal-body">
-                            <form id="editEventForm" method="POST" action="process_event.php">
-                                <!-- 隱藏欄位用來儲存日期 -->
+
+                        <form id="editEventForm" method="POST" action="process_event.php">
+                            <!-- 隱藏欄位用來儲存日期 -->
+                            <div class="modal-body">
                                 <input type="hidden" id="eventDateHidden" name="date">
 
                                 <!-- 行程 ID 隱藏欄位 -->
@@ -264,11 +265,12 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
                                     <label for="eventRemark" class="form-label">備註</label>
                                     <textarea class="form-control" id="eventRemark" name="remark"></textarea>
                                 </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-primary" value="edit" id="saveChangesBtn">儲存變更</button>
-                            <button type="button" class="btn btn-danger" value="delete" id="deleteBtn">刪除</button>
-                        </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-primary" value="edit"
+                                    id="saveChangesBtn">儲存變更</button>
+                                <button type="button" class="btn btn-danger" value="delete" id="deleteBtn">刪除</button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -345,33 +347,31 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
             const calendarGrid = document.querySelector('.calendar-grid'); // 假設日曆容器
             const weekdaysRow = document.querySelector('.weekdays'); // 星期標題行
 
-            // // 確保只清空日期部分，不影響星期標題
-            if (!weekdaysRow) {
-                // 如果星期標題行不存在，生成一次
+            if (!document.querySelector('.weekdays')) {
                 const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-                const newWeekdaysRow = document.createElement('div');
-                newWeekdaysRow.classList.add('weekdays');
+                const weekdaysRow = document.createElement('div');
+                weekdaysRow.classList.add('weekdays');
+
                 weekdays.forEach(day => {
                     const weekdayCell = document.createElement('div');
                     weekdayCell.classList.add('weekday');
                     weekdayCell.textContent = day;
-                    newWeekdaysRow.appendChild(weekdayCell);
+                    weekdaysRow.appendChild(weekdayCell);
                 });
-                calendarGrid.appendChild(newWeekdaysRow);
+
+                // 在日曆容器最前面插入星期標題行
+                calendarGrid.prepend(weekdaysRow);
             }
 
-            // 清除日期部分，保留星期標題
-            const daysContainer = document.querySelector('.calendar-grid');
+
+            const daysContainer = document.querySelector('.days-container');
             if (daysContainer) {
                 daysContainer.innerHTML = ''; // 清空日期部分
             } else {
-                // 如果日期部分不存在，創建
+                // 如果日期容器不存在，創建
                 const newDaysContainer = document.createElement('div');
-                newDaysContainer.classList.add('calendar-grid');
+                newDaysContainer.classList.add('days-container');
                 calendarGrid.appendChild(newDaysContainer);
-                weekdayCell.classList.add('weekday');
-                    weekdayCell.textContent = day;
-                    newWeekdaysRow.appendChild(weekdayCell);
             }
 
             const daysInMonth = new Date(year, month + 1, 0).getDate(); // 獲取當月天數
@@ -387,11 +387,15 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
                 const date = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
                 circleDiv.setAttribute('data-date', date);
 
-                // 如果是選中的日期，設置樣式
-                if (day === selectedDay) {
+                // 從 localStorage 獲取選中的日期
+                const storedSelectedDate = localStorage.getItem('selectedDate');
+
+                // 如果是 localStorage 中的選中日期，設置樣式
+                if (storedSelectedDate === date || day === selectedDay) {
                     circleDiv.style.backgroundColor = '#007bff';
                     circleDiv.style.color = 'white';
                 }
+
 
                 // 點擊事件
                 circleDiv.addEventListener('click', () => {
@@ -618,7 +622,7 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
                 if (xhr.status === 200) {
                     if (xhr.responseText.trim() === 'success') {
                         alert('儲存成功');
-                       
+                        location.reload(); // 刷新頁面
                     } else {
                         alert('錯誤: ' + xhr.responseText);
                     }
