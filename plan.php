@@ -329,81 +329,103 @@ if ($_SERVER["REQUEST_METHOD"] != "POST") {
     </div>
 
     <script>
-const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-];
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
 
-let today = new Date();
-let currentYear = today.getFullYear();
-let currentMonth = today.getMonth();
+        let today = new Date();
+        let currentYear = today.getFullYear();
+        let currentMonth = today.getMonth();
+        let selectedDate = today.getDate();
 
-// 更新月份與年份顯示
-function updateMonthYear() {
-    document.getElementById('monthYear').textContent = `${monthNames[currentMonth]} ${currentYear}`;
-}
-
-// 生成日曆
-function generateCalendar(year, month) {
-    const calendarGrid = document.querySelector('.calendar-grid');
-
-    // 清空現有的日曆格子（保留星期標題）
-    document.querySelectorAll('.calendar-grid div:not(.weekdays)').forEach(e => e.remove());
-
-    // 如果星期標題行不存在，創建
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-    const weekdaysRow = document.createElement('div');
-    weekdaysRow.classList.add('weekdays');
-
-    weekdays.forEach(day => {
-        const weekdayCell = document.createElement('div');
-        weekdayCell.classList.add('weekday');
-        weekdayCell.textContent = day;
-        weekdaysRow.appendChild(weekdayCell);
-    });
-    calendarGrid.prepend(weekdaysRow);
-
-    // 獲取當月的天數與1號的星期位置
-    const daysInCurrentMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0:日, 1:一, ..., 6:六
-
-    // 添加空白格子，填充當月開始前的空位
-    for (let i = 0; i < firstDayOfMonth; i++) {
-        const emptyCell = document.createElement('div');
-        calendarGrid.appendChild(emptyCell);
-    }
-
-    // 生成當月日期格子
-    for (let day = 1; day <= daysInCurrentMonth; day++) {
-        const dayCell = document.createElement('div');
-        const circleDiv = document.createElement('div');
-        circleDiv.className = 'circle';
-        circleDiv.textContent = day;
-
-        // 如果是今天，設置特別樣式
-        if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
-            circleDiv.style.backgroundColor = '#007bff';
-            circleDiv.style.color = 'white';
+        // 嘗試從 LocalStorage 獲取已選中的日期
+        const storedSelectedDate = localStorage.getItem('selectedDate');
+        if (storedSelectedDate) {
+            const [storedYear, storedMonth, storedDay] = storedSelectedDate.split('-').map(Number);
+            currentYear = storedYear;
+            currentMonth = storedMonth - 1; // 月份索引從 0 開始
+            selectedDate = storedDay;
         }
 
-        // 點擊日期時處理事件
-        circleDiv.addEventListener('click', () => {
-            const selectedDateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-            handleDateClick(selectedDateStr, circleDiv);
-        });
+        function updateMonthYear() {
+            document.getElementById('monthYear').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+        }
 
-        dayCell.appendChild(circleDiv);
-        calendarGrid.appendChild(dayCell);
-    }
-}
+        function daysInMonth(year, month) {
+            return new Date(year, month + 1, 0).getDate();
+        }
 
-// 點擊日期格子後的處理函數
-function handleDateClick(selectedDateStr, circleDiv) {
-    // 更新選擇的日期顯示
-    document.getElementById('selectedDate').textContent = `${selectedDateStr} 行程`;
-    document.getElementById('eventDate').value = selectedDateStr;
+        function generateCalendar(year, month) {
+            const calendarGrid = document.querySelector('.calendar-grid');
+            document.querySelectorAll('.calendar-grid div:not(.weekdays)').forEach(e => e.remove());
 
-    // 清除其他圓形的選中樣式
+            if (!document.querySelector('.weekdays')) {
+                const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+                const weekdaysRow = document.createElement('div');
+                weekdaysRow.classList.add('weekdays');
+
+                weekdays.forEach(day => {
+                    const weekdayCell = document.createElement('div');
+                    weekdayCell.classList.add('weekday');
+                    weekdayCell.textContent = day;
+                    weekdaysRow.appendChild(weekdayCell);
+                });
+
+                // 在日曆容器最前面插入星期標題行
+                calendarGrid.prepend(weekdaysRow);
+            }
+
+            const daysInCurrentMonth = daysInMonth(year, month);
+            const firstDayOfMonth = new Date(year, month, 1).getDay(); // 月的第一天是星期幾
+
+            // 添加空白格子，對齊日曆開始日期
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                const emptyCell = document.createElement('div');
+                calendarGrid.appendChild(emptyCell);
+            }
+
+            // 生成日期格子
+            for (let day = 1; day <= daysInCurrentMonth; day++) {
+                const dayCell = document.createElement('div');
+                dayCell.classList.add('calendar-day');
+
+                const circleDiv = document.createElement('div');
+                circleDiv.classList.add('circle');
+                circleDiv.textContent = day;
+
+                const date = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                circleDiv.setAttribute('data-date', date);
+
+                // 設置樣式：選中日期或今天
+                if (date === localStorage.getItem('selectedDate')) {
+                    circleDiv.style.backgroundColor = '#007bff';
+                    circleDiv.style.color = 'white';
+                } else if (
+                    year === today.getFullYear() &&
+                    month === today.getMonth() &&
+                    day === today.getDate() &&
+                    !localStorage.getItem('selectedDate')
+                ) {
+                    circleDiv.style.backgroundColor = '#007bff';
+                    circleDiv.style.color = 'white';
+                }
+
+                // 點擊事件
+                circleDiv.addEventListener('click', () => {
+                    handleDateClick(date, circleDiv);
+                });
+
+                dayCell.appendChild(circleDiv);
+                calendarGrid.appendChild(dayCell);
+            }
+        }
+
+        function handleDateClick(date, circleDiv) {
+    document.getElementById('selectedDate').textContent = `${date} 行程`;
+    document.getElementById('eventDate').value = date;
+
+    // 清除其他圓圈的選中樣式
     document.querySelectorAll('.circle').forEach(circle => {
         circle.style.backgroundColor = '';
         circle.style.color = '';
@@ -413,76 +435,94 @@ function handleDateClick(selectedDateStr, circleDiv) {
     circleDiv.style.backgroundColor = '#007bff';
     circleDiv.style.color = 'white';
 
-    // 模擬 AJAX 請求更新活動
+    // 儲存選中的日期
+    localStorage.setItem('selectedDate', date);
+
+    // 檢查並更新「返回今天」按鈕顯示狀態
+    checkReturnTodayButton();
+
+    // 更新活動列表（模擬 AJAX 請求）
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "", true);
+    xhr.open("POST", "", true); // 替換為實際後端 API
     xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
     xhr.onreadystatechange = function () {
         if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
             document.querySelector('.activities-list').innerHTML = this.responseText;
         }
     };
-    xhr.send(`date=${selectedDateStr}`);
+    xhr.send(`date=${date}`);
 }
 
-// 切換到上一個月
-document.getElementById('prevMonth').addEventListener('click', () => {
-    if (currentMonth === 0) {
-        currentMonth = 11;
-        currentYear--;
+        function checkReturnTodayButton() {
+    const todayString = new Date().toISOString().split('T')[0]; // 今天的日期
+    const savedDate = localStorage.getItem('selectedDate') || todayString; // 默認為今天
+
+    // 根據保存的日期與今天日期比對，顯示或隱藏「返回今天」按鈕
+    if (savedDate === todayString) {
+        document.getElementById('returnToday').style.display = 'none'; // 隱藏返回今天按鈕
     } else {
-        currentMonth--;
+        document.getElementById('returnToday').style.display = 'block'; // 顯示返回今天按鈕
     }
-    updateMonthYear();
-    generateCalendar(currentYear, currentMonth);
-});
+}
 
-// 切換到下一個月
-document.getElementById('nextMonth').addEventListener('click', () => {
-    if (currentMonth === 11) {
-        currentMonth = 0;
-        currentYear++;
-    } else {
-        currentMonth++;
-    }
-   
-});
 
-// 初始化日曆
-updateMonthYear();
-generateCalendar(currentYear, currentMonth);
+        // 初始化日曆
+        updateMonthYear();
+        generateCalendar(currentYear, currentMonth);
 
-        // 返回今天按鈕的點擊事件
-        document.getElementById('returnToday').addEventListener('click', () => {
-            currentYear = today.getFullYear();
-            currentMonth = today.getMonth();
-            selectedDate = today.getDate();
-
-            // 更新選中的日期顯示
-            document.getElementById('selectedDate').textContent = `${today.toISOString().split('T')[0]} 行程`;
-
-            // 清除 localStorage 中的 selectedDate
-            localStorage.removeItem('selectedDate');
-
-            // 更新月份顯示和生成日曆
+        // 切換月份
+        document.getElementById('prevMonth').addEventListener('click', () => {
+            if (currentMonth === 0) {
+                currentMonth = 11;
+                currentYear--;
+            } else {
+                currentMonth--;
+            }
             updateMonthYear();
-            generateCalendar(currentYear, currentMonth, { year: currentYear, month: currentMonth, day: selectedDate });
-
-            // 隱藏返回今天按鈕
-            document.getElementById('returnToday').style.display = 'none';
-
-            // 發送 AJAX 請求到 PHP 以獲取今天的行程
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', 'plan.php', true);
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.onload = function () {
-                if (xhr.status === 200) {
-                    // 更新行程列表
-                    document.querySelector('.activities-list').innerHTML = xhr.responseText;
-                }
-            };
-            xhr.send(`date=${encodeURIComponent(today.toISOString().split('T')[0])}`);
+            generateCalendar(currentYear, currentMonth);
         });
+
+        document.getElementById('nextMonth').addEventListener('click', () => {
+            if (currentMonth === 11) {
+                currentMonth = 0;
+                currentYear++;
+            } else {
+                currentMonth++;
+            }
+            updateMonthYear();
+            generateCalendar(currentYear, currentMonth);
+        });
+
+        document.getElementById('returnToday').addEventListener('click', () => {
+    const todayString = new Date().toISOString().split('T')[0]; // 今天的日期
+    localStorage.setItem('selectedDate', todayString); // 更新為今天
+
+    // 更新選中的日期顯示
+    document.getElementById('selectedDate').textContent = `${todayString} 行程`;
+
+    // 更新日曆並高亮今天
+    currentYear = new Date().getFullYear();
+    currentMonth = new Date().getMonth();
+    selectedDate = new Date().getDate();
+
+    updateMonthYear();
+    generateCalendar(currentYear, currentMonth, selectedDate);
+
+    // 檢查並更新返回今天按鈕顯示狀態
+    checkReturnTodayButton();
+
+    // 發送 AJAX 請求來獲取今天的行程
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'plan.php', true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            document.querySelector('.activities-list').innerHTML = xhr.responseText;
+        }
+    };
+    xhr.send(`date=${encodeURIComponent(todayString)}`);
+});
+
         // 頁面加載時初始化
         window.addEventListener('load', () => {
             const today = new Date();
