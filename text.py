@@ -1,11 +1,17 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
 import time
+import mysql.connector
+from webdriver_manager.chrome import ChromeDriverManager
+
+# 設定 Selenium WebDriver
+service = Service(ChromeDriverManager().install())  # 使用 webdriver-manager 來自動安裝 ChromeDriver
+driver = webdriver.Chrome(service=service)  # 使用 `service` 來初始化 ChromeDriver
 
 # 設置 Chrome 選項
 options = Options()
@@ -16,92 +22,87 @@ options.add_experimental_option("detach", True)  # 讓瀏覽器在腳本結束�
 # 設置 ChromeDriver
 service = Service(ChromeDriverManager().install())
 
+# 連接到 MySQL 資料庫，並設置字符集為 UTF-8
+try:
+    db_connection = mysql.connector.connect(
+        host="127.0.0.1",        # 資料庫主機名稱
+        user="root",             # 用戶名
+        password="",  # 密碼
+        database="0819",        # 資料庫名稱
+        charset='utf8mb4'        # 設置連接的字符集為 utf8mb4，支援 UTF-8 編碼
+    )
+    cursor = db_connection.cursor()
+    print("資料庫連接成功")
+except mysql.connector.Error as err:
+    print(f"資料庫連接錯誤: {err}")
+    driver.quit()
+    exit()
+
+
 # 啟動瀏覽器
 driver = webdriver.Chrome(service=service, options=options)
 
-try:
-    # 訪問 Facebook 登入頁面
-    driver.get("https://www.facebook.com/")
+# 登入 Facebook
+def login_facebook():
+    driver.get("https://www.facebook.com/")  # Facebook 登入頁面
     print("正在訪問 Facebook 登入頁面...")
 
     # 等待登入表單元素出現
     WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, "email")))
 
-    # 登入 Facebook
+    # 登入
     username_field = driver.find_element(By.ID, "email")
     password_field = driver.find_element(By.ID, "pass")
-    username_field.send_keys("0986684075")  # 替換為您的 Facebook 登入帳號
-    password_field.send_keys("1qaz@WSX")  # 替換為您的 Facebook 密碼
+    username_field.send_keys("0986684075")  # 替換為你的 Facebook 登入帳號
+    password_field.send_keys("1qaz@WSX")  # 替換為你的 Facebook 密碼
     driver.find_element(By.NAME, "login").click()
     print("正在登入...")
 
-    # 等待登入完成
     time.sleep(5)
 
-    # 訪問目標 Facebook 頁面
-    driver.get("https://www.facebook.com/peachgarden2017")  # 替換為目標頁面 URL
-    print("正在訪問目標頁面...")
+# 訪問特定貼文並抓取內容
+def grab_post_content(post_url):
+    driver.get(post_url)  # 訪問指定的貼文 URL
+    print("正在訪問貼文...")
 
-    # 滾動頁面以加載更多內容
-    scroll_count = 3  # 滾動次數，可根據需要調整
-    for _ in range(scroll_count):
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(3)  # 等待頁面加載
+    time.sleep(5)  # 等待頁面加載
 
-    # 判斷是否已經點擊過「查看更多」按鈕的標誌
-    see_more_clicked = False
+    
 
-    while True:
-        try:
-            # 查找並點擊「查看更多」按鈕，只點擊一次
-            if not see_more_clicked:
-                see_more_buttons = driver.find_elements(By.XPATH, "//div[contains(@class, 'x1i10hfl') and contains(text(), '查看更多')]")
-                if see_more_buttons:
-                    # 等待“查看更多”按鈕變為可點擊
-                    WebDriverWait(driver, 10).until(EC.element_to_be_clickable(see_more_buttons[0]))
-                    
-                    # 滾動到「查看更多」按鈕位置並點擊
-                    driver.execute_script("arguments[0].scrollIntoView();", see_more_buttons[0])
-                    time.sleep(1)  # 等待滾動完成
-                    driver.execute_script("arguments[0].click();", see_more_buttons[0])  # 點擊「查看更多」
-                    print("已點擊「查看更多」按鈕，正在加載完整貼文...")
-                    see_more_clicked = True  # 設置標誌，表示已經點擊過「查看更多」按鈕
-                    time.sleep(3)  # 等待頁面加載
+    try:
+        # 查找貼文內容
+        post_content = driver.find_element(By.XPATH, "//div[contains(@class, 'x1iorvi4')]/div[1]").text
+        print("貼文內容:\n", post_content)  # 輸出貼文內容
+    except Exception as e:
+        print(f"抓取貼文內容時出現錯誤: {e}")
 
-                    # 等待文章內容完全加載後，開始抓取並打印內容
-                    time.sleep(3)  # 等待更多內容加載
-                    elements = driver.find_elements(By.XPATH, "//*[@class='html-div xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd']")
 
-                    # 如果找到符合條件的文章，打印文章內容
-                    if elements:
-                        for element in elements:
-                            try:
-                                # 查找該 <div> 內的所有 <span> 元素
-                                span_elements = element.find_elements(By.XPATH, ".//span")
 
-                                # 提取並處理所有 <span> 的文本內容
-                                if span_elements:
-                                    for span in span_elements:
-                                        text_content = span.text
+# 執行函數
+login_facebook()
 
-                                        # 過濾不需要的文字（例如 讚、留言、傳送、分享）
-                                        unwanted_keywords = ["讚", "留言", "傳送", "分享"]
-                                        if any(keyword in text_content for keyword in unwanted_keywords):
-                                            continue  # 如果包含不需要的關鍵字，跳過此元素
-                                        
-                                        # 輸出文章內容
-                                        if text_content:
-                                            print("完整文章內容:\n", text_content)  # 輸出完整內容
+# 抓取第一篇貼文
+print("抓取第一篇貼文:")
+grab_post_content("https://www.facebook.com/peachgarden2017/posts/pfbid0epJpn1ZC2H9ZpCKYJk8yAy3CbrPh5UJSpRttwYw5YxP4JAbP2Drw7qn5osumHJWVl?locale=zh_TW")
 
-                            except Exception as e:
-                                print(f"處理元素時發生錯誤: {e}")
-                else:
-                    print("沒有更多的「查看更多」按鈕，停止處理。")
-                    break  # 如果沒有更多的「查看更多」按鈕，停止處理
+# 抓取第二篇貼文
+print("\n抓取第二篇貼文:")
+grab_post_content("https://www.facebook.com/peachgarden2017/posts/pfbid02UtYwAKhCE77uqSE7iS8a37c58KE5feAVSvwNAigtnGfdyfnBTPCFB5GR9Bysgbfdl?locale=zh_TW")
 
-        except Exception as e:
-            print(f"查找文章內容發生錯誤: {e}")
-            break
+# 抓取第三篇貼文
+print("\n抓取第三篇貼文:")
+grab_post_content("https://www.facebook.com/peachgarden2017/posts/pfbid0382q6N9bVFDc58yCZS9RPVq4dwe5DuvuTEHLZrzYoPEqW5vtUTQmmCzkjRuzgQmUal?locale=zh_TW")
 
-finally:
-    driver.quit()
+# 抓取第四篇貼文
+print("\n抓取第四篇貼文:")
+grab_post_content("https://www.facebook.com/peachgarden2017/posts/pfbid0o6waVx9Kn5MVyRVQyeTiyHHjF8bjQE8TrMocFjWzyTbbPk7udfVPm7XLgxtaXg15l?locale=zh_TW")
+
+print("\n抓取第四篇貼文:")
+grab_post_content("https://www.facebook.com/peachgarden2017/posts/pfbid02cM8d1rZPfDUwwrwQmwu2hGe7X36wwRLNJ3dZ9FVtpgA6nFqBK4MTYMg5vzR1Qqrml?locale=zh_TW")
+# 抓取第四篇貼文
+
+print("\n抓取第五篇貼文:")
+grab_post_content("https://www.facebook.com/peachgarden2017/posts/pfbid02YkDM9PPdXc2pz88iSKoKuVK1oBM7oRooiE1XQYVK2z1AGpWpvfFwD3k4r7VEBbSkl?locale=zh_TW")
+
+# 關閉瀏覽器
+driver.quit()
