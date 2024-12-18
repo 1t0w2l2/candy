@@ -1,107 +1,136 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 import time
+import mysql.connector
+from webdriver_manager.chrome import ChromeDriverManager
 
-# 設置 Chrome 選項
-options = Options()
-options.add_argument("--start-maximized")  # 啟動時最大化視窗
-options.add_argument("--disable-notifications")  # 禁用通知
-options.add_experimental_option("detach", True)  # 讓瀏覽器在腳本結束後保持打開
-
-# 設置 ChromeDriver
+# 設定 Selenium WebDriver
 service = Service(ChromeDriverManager().install())
+options = Options()
+options.add_argument("--start-maximized")
+options.add_argument("--disable-notifications")
+options.add_experimental_option("detach", True)
+
+# 連接到 MySQL 資料庫
+try:
+    db_connection = mysql.connector.connect(
+        host="127.0.0.1",
+        user="root",
+        password="",  # 密碼
+        database="0819",
+        charset='utf8mb4'
+    )
+    cursor = db_connection.cursor()
+    print("資料庫連接成功")
+except mysql.connector.Error as err:
+    print(f"資料庫連接錯誤: {err}")
+    exit()
 
 # 啟動瀏覽器
 driver = webdriver.Chrome(service=service, options=options)
 
-try:
-    # 訪問 Facebook 登入頁面
+# 登入 Facebook
+def login_facebook():
     driver.get("https://www.facebook.com/")
     print("正在訪問 Facebook 登入頁面...")
-
-    # 等待登入表單元素出現
+    
     WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, "email")))
-    print("頁面已加載。")
 
-    # 登入 Facebook
     username_field = driver.find_element(By.ID, "email")
     password_field = driver.find_element(By.ID, "pass")
-    username_field.send_keys("0986684075")  # 替換為您的 Facebook 登入帳號
-    password_field.send_keys("1qaz@WSX")  # 替換為您的 Facebook 密碼
+    username_field.send_keys("0986684075")  # 替換為你的 Facebook 登入帳號
+    password_field.send_keys("1qaz@WSX")  # 替換為你的 Facebook 密碼
     driver.find_element(By.NAME, "login").click()
     print("正在登入...")
-
-    # 等待登入完成
     time.sleep(5)
 
-    # 訪問目標 Facebook 頁面
-    driver.get("https://www.facebook.com/peachgarden2017")  # 替換為目標頁面 URL
-    print("正在訪問目標頁面...")
+# 抓取報名頁面的標題
+def grab_signup_title(url):
+    driver.get(url)
+    time.sleep(5)  # 等待頁面加載
 
-    # 滾動頁面以加載更多內容
-    scroll_count = 3  # 滾動次數，可根據需要調整
-    for _ in range(scroll_count):
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(3)  # 等待頁面加載
+    try:
+        title_element = driver.find_element(By.XPATH, "//h1")  # 根據實際情況調整
+        return title_element.text
+    except Exception as e:
+        print("抓取標題時出現錯誤:", e)
+        return None
 
-    # 查找指定類名的元素
-    elements = driver.find_elements(By.CSS_SELECTOR, ".x78zum5.xdt5ytf.xz62fqu.x16ldp7u")
-    print(f"找到 {len(elements)} 個元素，開始提取內容...\n")
 
-    # 提取所有找到的元素內容
-    for index, el in enumerate(elements):
-        text_content = el.text.strip()  # 提取純文本
-        class_attribute = el.get_attribute("class")  # 獲取 class 屬性
 
-        # 排除特定 class 的元素
-        excluded_classes = [
-            "html-div xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x78zum5 x1n2onr6 xh8yej3",
-            "x9f619 x1ja2u2z x78zum5 x2lah0s x1n2onr6 x1nhvcw1 x1qjc9v5 xozqiw3 x1q0g3np xyamay9 xykv574 xbmpl8g x4cne27 xifccgj",
-            "x1yztbdb",
-            "x7wzq59",
-            "x1n2onr6 x1ja2u2z x1jx94hy x1qpq9i9 xdney7k xu5ydu1 xt3gfkd x9f619 xh8yej3 x6ikm8r x10wlt62 xquyuld",
-            "html-span xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x1hl2dhg x16tdsg8 x1vvkbs"
-        ]
-        if any(excluded_class in class_attribute for excluded_class in excluded_classes):
-            continue  # 跳過該元素
+# 其他程式碼保持不變...
 
-        # 排除「簡介」內容
-        if "簡介" in text_content:
-            continue
+# 抓取貼文內容並檢查圖片
+def grab_post_content_and_image(post_url):
+    driver.get(post_url)
+    print("正在訪問貼文...")
+    time.sleep(5)  # 等待頁面加載
 
-        # 排除含有「精選」的文章
-        if "精選" in text_content:
-            continue
+    try:
+        # 抓取貼文內容
+        post_content = driver.find_element(By.XPATH, "//div[contains(@class, 'x1iorvi4')]/div[1]").text  # 根據實際情況調整
+        
+        # 嘗試抓取圖片，如果沒有圖片則返回 None
+        try:
+            image_element = driver.find_element(By.XPATH, "//img[contains(@class, 'x1ey2m1c')]")  # 根據實際情況調整
+            image_url = image_element.get_attribute("src")
+        except Exception as e:
+            image_url = None  # 如果沒有圖片，設置為 None
 
-        # 過濾不需要的文字（例如 讚、留言、傳送、分享）
-        unwanted_keywords = ["讚", "留言", "傳送", "分享"]
-        if any(keyword in text_content for keyword in unwanted_keywords):
-            continue  # 如果包含不需要的關鍵字，跳過此元素
+        return post_content, image_url
+    except Exception as e:
+        print(f"抓取貼文內容時出現錯誤: {e}")
+        return None, None
 
-        # 過濾特定不需要的元素內容
-        unwanted_texts = [
-            "桃園市失智共同照護中心-桃園長庚",
-            "粉絲專頁 · 非營利組織",
-            "03 319 6200",
-            "ad.taoyuan2017@gmail.com",
-            "100% 推薦（6 則評論）",
-            "2023年10月7日"
-        ]
-        if any(unwanted_text in text_content for unwanted_text in unwanted_texts):
-            continue
+def insert_activity1(title, link, image_url):
+    try:
+        if image_url:  # 只有在有圖片的情況下插入圖片資料
+            cursor.execute(
+                "INSERT INTO activity1 (institution_name, activity_title, activity_link, activity_image) VALUES (%s, %s, %s, %s)", 
+                ("桃園市失智共同照護中心-桃園長庚", title, link, image_url)
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO activity1 (institution_name, activity_title, activity_link) VALUES (%s, %s, %s)", 
+                ("桃園市失智共同照護中心-桃園長庚", title, link)
+            )
+        db_connection.commit()  # 提交到資料庫
+    except mysql.connector.Error as err:
+        print(f"插入資料時出錯: {err}")
 
-        print(f"元素 {index + 1}:\n{text_content}\n")
+# 執行登入
+login_facebook()
 
-    print("\n提取完成！")
+# 報名頁面 URL 列表
+signup_urls = [
+    "https://www.beclass.com/rid=294d9bb66cd36941fd3a",
+    "https://www.beclass.com/rid=284d95666a33696a5948",
+    "https://www.beclass.com/rid=284d89066550cf509e0d",
+    "https://www.beclass.com/rid=284d7ca6607c12530e74"
+]
 
-except Exception as e:
-    print(f"發生錯誤：{e}")
+# 貼文 URL 列表
+post_urls = [
+    "https://www.facebook.com/peachgarden2017/posts/pfbid0epJpn1ZC2H9ZpCKYJk8yAy3CbrPh5UJSpRttwYw5YxP4JAbP2Drw7qn5osumHJWVl?locale=zh_TW",
+    "https://www.facebook.com/peachgarden2017/posts/pfbid02UtYwAKhCE77uqSE7iS8a37c58KE5feAVSvwNAigtnGfdyfnBTPCFB5GR9Bysgbfdl?locale=zh_TW",
+    "https://www.facebook.com/peachgarden2017/posts/pfbid02cM8d1rZPfDUwwrwQmwu2hGe7X36wwRLNJ3dZ9FVtpgA6nFqBK4MTYMg5vzR1Qqrml?locale=zh_TW",
+    "https://www.facebook.com/peachgarden2017/posts/pfbid02YkDM9PPdXc2pz88iSKoKuVK1oBM7oRooiE1XQYVK2z1AGpWpvfFwD3k4r7VEBbSkl?locale=zh_TW"
+]
+for i in range(len(post_urls)):
+    title = grab_signup_title(signup_urls[i])
+    post_content, image_url = grab_post_content_and_image(post_urls[i])
 
-finally:
-    print("腳本結束，瀏覽器保持打開狀態。")
-    input("按 Enter 鍵結束腳本...")
+    # 確保所有必要的資料都已抓取
+    if title and post_content:
+        insert_activity1(title, post_urls[i], image_url)  # 插入標題、連結和圖像連結
+        print(f"\n標題: {title}")
+        print(f"貼文內容:\n{post_content}")
+
+# 關閉資料庫連接和瀏覽器
+cursor.close()
+db_connection.close()
+driver.quit()
