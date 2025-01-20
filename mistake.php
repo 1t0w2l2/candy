@@ -1,16 +1,18 @@
 <?php
 include "db.php";
 
-
 // 查詢 institution_name 欄位資料
-$sql = "SELECT institution_name FROM institution";
+$sql = "SELECT institution_name, address, phone, website FROM institution";
 $result = mysqli_query($link, $sql);
 
-
-
+// 將資料存入一個陣列以便於 JavaScript 使用
+$institutions = [];
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $institutions[$row['institution_name']] = $row;
+    }
+}
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -279,6 +281,26 @@ $result = mysqli_query($link, $sql);
             }
         }
     </style>
+    <script>
+        // 將 PHP 陣列轉換為 JavaScript 物件
+        const institutions = <?php echo json_encode($institutions); ?>;
+
+        function fillInstitutionData() {
+            const institutionName = document.getElementById('institution_name').value;
+            if (institutions[institutionName]) {
+                const data = institutions[institutionName];
+                document.getElementById('address').value = data.address;
+                document.getElementById('phone').value = data.phone;
+                document.getElementById('website').value = data.website;
+            } else {
+                // 清空輸入框
+                document.getElementById('address').value = '';
+                document.getElementById('phone').value = '';
+                document.getElementById('website').value = '';
+            }
+        }
+        
+    </script>
 </head>
 
 <body>
@@ -310,7 +332,6 @@ $result = mysqli_query($link, $sql);
                         <i class="fa-solid fa-plus"></i> 新增回報錯誤
                     </button>
                 </div>
-
             <?php endif; ?>
         </div>
 
@@ -318,8 +339,9 @@ $result = mysqli_query($link, $sql);
             <div class="container">
                 <div class="main-container">
 
+
                     <!-- 新增回報錯誤的 Modal -->
-                    <div class="modal fade s3-modal" id="addModal" tabindex="-1" aria-labelledby="addModalLabel"
+                    <div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel"
                         aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
@@ -333,16 +355,13 @@ $result = mysqli_query($link, $sql);
                                         <div class="mb-3">
                                             <label for="institution_name" class="form-label">醫療機構名稱</label>
                                             <input type="text" class="form-control" list="options0"
-                                                id="institution_name" name="institution_name">
+                                                id="institution_name" name="institution_name" placeholder="輸入機構名稱"
+                                                required onchange="fillInstitutionData()">
                                             <datalist id="options0">
                                                 <?php
                                                 // 將資料庫中的資料填入 <option>
-                                                if ($result->num_rows > 0) {
-                                                    while ($row = $result->fetch_assoc()) {
-                                                        echo '<option>' . htmlspecialchars($row['institution_name'], ENT_QUOTES, 'UTF-8') . '</option>';
-                                                    }
-                                                } else {
-                                                    echo '<option disabled>無可用機構</option>';
+                                                foreach ($institutions as $name => $data) {
+                                                    echo '<option>' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '</option>';
                                                 }
                                                 ?>
                                             </datalist>
@@ -350,49 +369,39 @@ $result = mysqli_query($link, $sql);
                                         <div class="mb-3">
                                             <label for="address" class="form-label">地址</label>
                                             <input type="text" class="form-control" id="address" name="address"
-                                                placeholder="輸入地址" required>
+                                                required>
                                         </div>
                                         <div class="mb-3">
                                             <label for="phone" class="form-label">電話</label>
-                                            <input type="tel" class="form-control" id="phone" name="phone"
-                                                placeholder="輸入電話號碼" pattern="[0-9\-]+" required>
+                                            <input type="tel" class="form-control" id="phone" name="phone" required>
                                         </div>
                                         <div class="mb-3">
                                             <label for="website" class="form-label">網站</label>
-                                            <input type="url" class="form-control" id="website" name="website"
-                                                placeholder="輸入網站網址">
+                                            <input type="url" class="form-control" id="website" name="website">
                                         </div>
                                         <div class="mb-3">
-                                            <label for="reportDateTime" class="form-label">回報日期時間</label>
-                                            <input type="datetime-local" class="form-control" id="reportDateTime"
-                                                name="report_datetime" required>
+                                            <label for="servicetime" class="form-label">營業時間</label>
+                                            <input type="text" class="form-control" id="servicetime" name="servicetime"
+                                                readonly>
                                         </div>
+                                        <!-- 隱藏回報日期時間的輸入框 -->
+                                        <input type="hidden" id="reportDateTime" name="report_datetime">
 
-                                        <script>
-                                            document.addEventListener('DOMContentLoaded', function () {
-                                                let currentDateTime = new Date(); // 取得當地時間
-                                                let formattedDate = currentDateTime.toISOString().slice(0, 16); // 格式化為 YYYY-MM-DDTHH:mm
-
-                                                // 確保時區符合台灣時間
-                                                let tzOffset = new Date().getTimezoneOffset() * 60000; // 轉換為秒數，將 UTC 時區偏移轉換為秒數
-                                                let taiwanTime = new Date(currentDateTime - tzOffset); // 台灣時間計算方式
-
-                                                let formattedTaiwanDate = taiwanTime.toISOString().slice(0, 16); // 格式化為 'YYYY-MM-DDTHH:mm'
-
-                                                document.getElementById('reportDateTime').value = formattedTaiwanDate;
-                                            });
-                                        </script>
-
-
+                                        <div class="modal-footer">
+                                            <button type="submit" class="btn btn-primary">送出回報</button>
+                                            <button type="button" class="btn btn-secondary"
+                                                data-bs-dismiss="modal">取消</button>
+                                        </div>
+                                      
                                     </form>
                                 </div>
-                                <div class="modal-footer">
-                                    <button type="submit" class="btn btn-primary ">送出回報</button>
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                </div>
+
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
 </body>
 
 </html>
