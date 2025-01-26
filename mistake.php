@@ -65,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $check_sql = "SELECT * FROM mistake_servicetime WHERE mistake_id = '$mistake_id' AND day = '$day'";
                 $check_result = mysqli_query($link, $check_sql);
 
-                // 顯示 debug 輸出，確認是否查詢到該紀錄
+                // 如果查詢到該紀錄，執行更新
                 if (mysqli_num_rows($check_result) > 0) {
                     // 營業時間已存在，檢查是否需要更新
                     $existing_row = mysqli_fetch_assoc($check_result);
@@ -99,6 +99,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
