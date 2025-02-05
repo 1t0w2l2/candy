@@ -20,67 +20,86 @@ if ($result->num_rows > 0) {
     }
 }
 
+// 查詢 mistake 表的資料
+$mistakes = [];
+$sql_mistake = "SELECT * FROM mistake WHERE 1=1"; // 預設條件
+
+// 檢查是否有搜尋條件
+if (isset($_GET['search_input']) && $_GET['search_input'] !== '') {
+    $search_input = mysqli_real_escape_string($link, $_GET['search_input']);
+    $sql_mistake .= " AND institution_name LIKE '%$search_input%'";
+}
+
+if (isset($_GET['start_date']) && $_GET['start_date'] !== '') {
+    $start_date = mysqli_real_escape_string($link, $_GET['start_date']);
+    $sql_mistake .= " AND report_datetime >= '$start_date'";
+}
+
+if (isset($_GET['end_date']) && $_GET['end_date'] !== '') {
+    $end_date = mysqli_real_escape_string($link, $_GET['end_date']);
+    $sql_mistake .= " AND report_datetime <= '$end_date'";
+}
+
+$sql_mistake .= " ORDER BY report_datetime DESC"; // 根據報告時間排序
+$result_mistake = mysqli_query($link, $sql_mistake);
+
+if ($result_mistake->num_rows > 0) {
+    while ($row = $result_mistake->fetch_assoc()) {
+        $mistakes[] = $row; // 將每一行資料存入陣列
+    }
+}
+
 // 處理表單提交
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $institution_id = mysqli_real_escape_string($link, $_POST['institution_id']);
-    $institution_name = mysqli_real_escape_string($link, $_POST['institution_name']);
-    $address = mysqli_real_escape_string($link, $_POST['address']);
-    $phone = mysqli_real_escape_string($link, $_POST['phone']);
-    $website = mysqli_real_escape_string($link, $_POST['website']);
+    if (isset($_POST['cancel_registration'])) {
+        // 取消回報的邏輯
+        $mistake_id = mysqli_real_escape_string($link, $_POST['mistake_id']);
 
-    // 插入回報資料到 mistake 表，並記錄回報時間
-    $insert_sql = "INSERT INTO mistake (institution_id, institution_name, address, phone, website, report_datetime) 
-                   VALUES ('$institution_id', '$institution_name', '$address', '$phone', '$website', NOW())";
+        // 刪除資料
+        $delete_sql = "DELETE FROM mistake WHERE mistake_id = '$mistake_id'";
+        if (mysqli_query($link, $delete_sql)) {
+            echo "<script>alert('回報已取消！'); window.location.href='mistake.php';</script>";
+            exit();
+        } else {
+            echo "<script>alert('取消回報失敗： " . mysqli_error($link) . "');</script>";
+        }
+    } else {
+        // 新增回報的邏輯
+        $institution_id = mysqli_real_escape_string($link, $_POST['institution_id']);
+        $institution_name = mysqli_real_escape_string($link, $_POST['institution_name']);
+        $address = mysqli_real_escape_string($link, $_POST['address']);
+        $phone = mysqli_real_escape_string($link, $_POST['phone']);
+        $website = mysqli_real_escape_string($link, $_POST['website']);
 
-    if (mysqli_query($link, $insert_sql)) {
-        // 獲取剛插入的 mistake_id
-        $mistake_id = mysqli_insert_id($link);  // 獲取插入的 mistake_id
+        // 插入回報資料到 mistake 表，並記錄回報時間，狀態預設為「待審核」
+        $insert_sql = "INSERT INTO mistake (institution_id, institution_name, address, phone, website, report_datetime, status) 
+                       VALUES ('$institution_id', '$institution_name', '$address', '$phone', '$website', NOW(), '待審核')";
 
-        // 確保 servicetime 是一個陣列
-        if (isset($_POST['servicetime']) && is_array($_POST['servicetime'])) {
-            foreach ($_POST['servicetime'] as $day => $time) {
-                // 預設變數值
-                $open_time = null;
-                $close_time = null;
+        if (mysqli_query($link, $insert_sql)) {
+            // 獲取剛插入的 mistake_id
+            $mistake_id = mysqli_insert_id($link);  // 獲取插入的 mistake_id
 
-                // 檢查是否勾選24小時營業
-                if (isset($_POST['is_24h']) && $_POST['is_24h'] == 1) {
-                    // 24小時營業設定為 00:00 - 00:00
-                    $open_time = '00:00';
-                    $close_time = '00:00';
-                } else {
-                    // 正常處理修改的時間
-                    if (isset($time['open']) && isset($time['close'])) {
-                        $open_time = mysqli_real_escape_string($link, $time['open']);
-                        $close_time = mysqli_real_escape_string($link, $time['close']);
-                    }
-                }
+            // 確保 servicetime 是一個陣列
+            if (isset($_POST['servicetime']) && is_array($_POST['servicetime'])) {
+                foreach ($_POST['servicetime'] as $day => $time) {
+                    // 預設變數值
+                    $open_time = '00:00:00';
+                    $close_time = '00:00:00';
 
-                // 如果沒有設置開放時間或關閉時間，則跳過該天的更新
-                if ($open_time === null || $close_time === null) {
-                    continue;  // 這裡跳過不處理的日期
-                }
-
-                // 查詢現有的營業時間
-                $check_sql = "SELECT * FROM mistake_servicetime WHERE mistake_id = '$mistake_id' AND day = '$day'";
-                $check_result = mysqli_query($link, $check_sql);
-
-                // 如果查詢到該紀錄，執行更新
-                if (mysqli_num_rows($check_result) > 0) {
-                    // 營業時間已存在，檢查是否需要更新
-                    $existing_row = mysqli_fetch_assoc($check_result);
-                    if ($existing_row['open_time'] !== $open_time || $existing_row['close_time'] !== $close_time) {
-                        // 如果營業時間已經改變，更新該行
-                        $update_sql = "
-                            UPDATE mistake_servicetime 
-                            SET open_time = '$open_time', close_time = '$close_time' 
-                            WHERE mistake_id = '$mistake_id' AND day = '$day'";
-                        if (!mysqli_query($link, $update_sql)) {
-                            echo "<script>alert('更新營業時間失敗： " . mysqli_error($link) . "');</script>";
+                    // 檢查是否勾選24小時營業
+                    if (isset($time['24hours']) && $time['24hours'] == 'on') {
+                        // 24小時營業設定為 00:00:00 - 00:00:00
+                        $open_time = '00:00:00';
+                        $close_time = '00:00:00';
+                    } else {
+                        // 正常處理修改的時間
+                        if (isset($time['open']) && isset($time['close'])) {
+                            $open_time = mysqli_real_escape_string($link, $time['open']);
+                            $close_time = mysqli_real_escape_string($link, $time['close']);
                         }
                     }
-                } else {
-                    // 營業時間不存在，插入新的紀錄
+
+                    // 插入營業時間
                     $insert_sql = "
                         INSERT INTO mistake_servicetime (mistake_id, day, open_time, close_time) 
                         VALUES ('$mistake_id', '$day', '$open_time', '$close_time')";
@@ -89,13 +108,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     }
                 }
             }
-        }
 
-        // 提示成功訊息並重定向回 mistake.php
-        echo "<script>alert('回報成功！'); window.location.href='mistake.php';</script>";
-        exit();
-    } else {
-        echo "<script>alert('回報失敗： " . mysqli_error($link) . "');</script>";
+            // 提示成功訊息並重定向回 mistake.php
+            echo "<script>alert('回報成功！'); window.location.href='mistake.php';</script>";
+            exit();
+        } else {
+            echo "<script>alert('回報失敗： " . mysqli_error($link) . "');</script>";
+        }
     }
 }
 ?>
@@ -266,7 +285,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                         <input type="hidden" id="institution_id" name="institution_id">
                                         <div class="mb-3">
                                             <label for="address" class="form-label">地址</label>
-                                            <input type="text" class="form-control" id="address" name="address" required>
+                                            <input type="text" class="form-control" id="address" name="address"
+                                                required>
                                         </div>
                                         <div class="mb-3">
                                             <label for="phone" class="form-label">電話</label>
@@ -294,9 +314,83 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         </div>
                     </div>
 
+                    <ul class="nav nav-tabs" id="tab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tab1" data-bs-toggle="tab" data-bs-target="#content1"
+                                type="button" role="tab" aria-controls="content1" aria-selected="true">回報成功</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab2" data-bs-toggle="tab" data-bs-target="#content2"
+                                type="button" role="tab" aria-controls="content2" aria-selected="false">取消回報</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="content1" role="tabpanel" aria-labelledby="tab1">
+                            <div id="successfulReports">
+                                <?php if (!empty($mistakes)): ?>
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>機構名稱</th>
+                                                <th>回報時間</th>
+                                                <th>審核狀態</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($mistakes as $mistake): ?>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($mistake['institution_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars($mistake['report_datetime'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars($mistake['status'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td>
+                                                        <form action="" method="POST" style="display:inline;">
+                                                            <input type="hidden" name="mistake_id" value="<?php echo htmlspecialchars($mistake['mistake_id'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                            <button type="submit" name="cancel_registration" class="s3-button" onclick="return confirm('確定要取消回報');">
+                                                                <i class="fa-regular fa-square-minus"></i>
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                <?php else: ?>
+                                    <p>目前尚無回報成功的資料。</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="content2" role="tabpanel" aria-labelledby="tab2">
+                            <div id="canceledReports">
+                                <?php if (!empty($canceledMistakes)): ?>
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>機構名稱</th>
+                                                <th>回報時間</th>
+                                                <th>取消時間</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($canceledMistakes as $canceledMistake): ?>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($canceledMistake['institution_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars($canceledMistake['report_datetime'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars($canceledMistake['cancellation_datetime'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                <?php else: ?>
+                                    <p>目前尚無取消回報的資料。</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 引入 Bootstrap 的 JS -->
-                    <script
-                        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+                    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
                 </div>
             </div>
