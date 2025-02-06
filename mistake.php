@@ -20,9 +20,19 @@ if ($result->num_rows > 0) {
     }
 }
 
-// 查詢 mistake 表的資料
+// 查詢已取消的回報資料
+$canceledMistakes = [];
+$sql_canceled_mistake = "SELECT * FROM mistake WHERE status = '已取消'";
+$result_canceled_mistake = mysqli_query($link, $sql_canceled_mistake);
+if ($result_canceled_mistake->num_rows > 0) {
+    while ($row = $result_canceled_mistake->fetch_assoc()) {
+        $canceledMistakes[] = $row; // 將每一行資料存入陣列
+    }
+}
+
+// 查詢 mistake 表的資料，過濾狀態
 $mistakes = [];
-$sql_mistake = "SELECT * FROM mistake WHERE 1=1"; // 預設條件
+$sql_mistake = "SELECT * FROM mistake WHERE status IN ('待審核', '審核中', '已審核')"; // 只查詢這三種狀態
 
 // 檢查是否有搜尋條件
 if (isset($_GET['search_input']) && $_GET['search_input'] !== '') {
@@ -55,9 +65,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // 取消回報的邏輯
         $mistake_id = mysqli_real_escape_string($link, $_POST['mistake_id']);
 
-        // 刪除資料
-        $delete_sql = "DELETE FROM mistake WHERE mistake_id = '$mistake_id'";
-        if (mysqli_query($link, $delete_sql)) {
+        // 更新 mistake 表中的狀態為「已取消」
+        $update_sql = "UPDATE mistake SET status = '已取消' WHERE mistake_id = '$mistake_id'";
+        if (mysqli_query($link, $update_sql)) {
             echo "<script>alert('回報已取消！'); window.location.href='mistake.php';</script>";
             exit();
         } else {
@@ -77,7 +87,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         if (mysqli_query($link, $insert_sql)) {
             // 獲取剛插入的 mistake_id
-            $mistake_id = mysqli_insert_id($link);  // 獲取插入的 mistake_id
+            $mistake_id = mysqli_insert_id($link);
 
             // 確保 servicetime 是一個陣列
             if (isset($_POST['servicetime']) && is_array($_POST['servicetime'])) {
@@ -100,10 +110,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     }
 
                     // 插入營業時間
-                    $insert_sql = "
+                    $insert_servicetime_sql = "
                         INSERT INTO mistake_servicetime (mistake_id, day, open_time, close_time) 
                         VALUES ('$mistake_id', '$day', '$open_time', '$close_time')";
-                    if (!mysqli_query($link, $insert_sql)) {
+                    if (!mysqli_query($link, $insert_servicetime_sql)) {
                         echo "<script>alert('插入營業時間失敗： " . mysqli_error($link) . "');</script>";
                     }
                 }
@@ -231,7 +241,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <input type="text" name="search_input" placeholder="請輸入關鍵字"
                         value="<?php echo isset($_GET['search_input']) ? htmlspecialchars($_GET['search_input']) : ''; ?>">
                     <input type="date" name="start_date" placeholder="活動日期"
-                        value="<?php echo htmlspecialchars($start_date); ?>">
+                        value="<?php echo isset($_GET['start_date']) ? htmlspecialchars($_GET['start_date']) : ''; ?>">
                 </div>
                 <div class="mb-3" style="width:100%">
                     <button type="submit" class="btn" name="action" value="search" style="background-color:#9dc7c9;">
@@ -320,8 +330,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 type="button" role="tab" aria-controls="content1" aria-selected="true">回報成功</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="tab2" data-bs-toggle="tab" data-bs-target="#content2"
-                                type="button" role="tab" aria-controls="content2" aria-selected="false">取消回報</button>
+                            <button class="nav-link" id="tab2" data-bs-toggle="tab" data-bs-target="#canceledReports"
+                                type="button" role="tab" aria-controls="canceledReports"
+                                aria-selected="false">取消回報</button>
                         </li>
                     </ul>
 
@@ -341,13 +352,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                         <tbody>
                                             <?php foreach ($mistakes as $mistake): ?>
                                                 <tr>
-                                                    <td><?php echo htmlspecialchars($mistake['institution_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td><?php echo htmlspecialchars($mistake['report_datetime'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td><?php echo htmlspecialchars($mistake['status'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td><?php echo htmlspecialchars($mistake['institution_name'], ENT_QUOTES, 'UTF-8'); ?>
+                                                    </td>
+                                                    <td><?php echo htmlspecialchars($mistake['report_datetime'], ENT_QUOTES, 'UTF-8'); ?>
+                                                    </td>
+                                                    <td><?php echo htmlspecialchars($mistake['status'], ENT_QUOTES, 'UTF-8'); ?>
+                                                    </td>
                                                     <td>
                                                         <form action="" method="POST" style="display:inline;">
-                                                            <input type="hidden" name="mistake_id" value="<?php echo htmlspecialchars($mistake['mistake_id'], ENT_QUOTES, 'UTF-8'); ?>">
-                                                            <button type="submit" name="cancel_registration" class="s3-button" onclick="return confirm('確定要取消回報');">
+                                                            <input type="hidden" name="mistake_id"
+                                                                value="<?php echo htmlspecialchars($mistake['mistake_id'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                            <button type="submit" name="cancel_registration" class="s3-button"
+                                                                onclick="return confirm('確定要取消回報');">
                                                                 <i class="fa-regular fa-square-minus"></i>
                                                             </button>
                                                         </form>
@@ -361,42 +377,45 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="tab-pane fade" id="content2" role="tabpanel" aria-labelledby="tab2">
-                            <div id="canceledReports">
-                                <?php if (!empty($canceledMistakes)): ?>
-                                    <table class="table">
-                                        <thead>
+                        <div class="tab-pane fade" id="canceledReports" role="tabpanel" aria-labelledby="tab2">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>機構名稱</th>
+                                        <th>回報時間</th>
+                                        <th>狀態</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($canceledMistakes)): ?>
+                                        <?php foreach ($canceledMistakes as $mistake): ?>
                                             <tr>
-                                                <th>機構名稱</th>
-                                                <th>回報時間</th>
-                                                <th>取消時間</th>
+                                                <td><?php echo htmlspecialchars($mistake['institution_name'], ENT_QUOTES, 'UTF-8'); ?>
+                                                </td>
+                                                <td><?php echo htmlspecialchars($mistake['report_datetime'], ENT_QUOTES, 'UTF-8'); ?>
+                                                </td>
+                                                <td><?php echo htmlspecialchars($mistake['status'], ENT_QUOTES, 'UTF-8'); ?>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($canceledMistakes as $canceledMistake): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($canceledMistake['institution_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td><?php echo htmlspecialchars($canceledMistake['report_datetime'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td><?php echo htmlspecialchars($canceledMistake['cancellation_datetime'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                <?php else: ?>
-                                    <p>目前尚無取消回報的資料。</p>
-                                <?php endif; ?>
-                            </div>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="2">沒有已取消的回報。</td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-
-                    <!-- 引入 Bootstrap 的 JS -->
-                    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-
                 </div>
+
+                <!-- 引入 Bootstrap 的 JS -->
+                <script
+                    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
             </div>
         </div>
     </div>
-
 </body>
 
 </html>
