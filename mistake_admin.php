@@ -110,12 +110,13 @@ $result = mysqli_query($link, $sql);
                                 </td>
                                 <td><a href="<?php echo htmlspecialchars($row['website']); ?>" target="_blank">網站</a></td>
                                 <td>
-                                    <button class="info-btn"
-                                        onclick="showModal('<?php echo htmlspecialchars($row['mistake_id']); ?>')">查看營業時間</button>
-                                </td>
+    <button class="info-btn"
+        onclick="showModal('<?php echo htmlspecialchars($row['mistake_id']); ?>')">查看營業時間</button>
+</td>
+
                                 <td>
                                     <button class="pending-btn"
-                                    onclick="window.location.href='edit_institution_1.php?institution_id=<?php echo urlencode($row['institution_id']); ?>'">待審核</button>
+                                        onclick="window.location.href='edit_institution_1.php?institution_id=<?php echo urlencode($row['institution_id']); ?>'">待審核</button>
                                 </td>
                                 <td>
                                     <div class="button-group">
@@ -132,8 +133,8 @@ $result = mysqli_query($link, $sql);
             <?php endif; ?>
         </main>
 
-  <!-- 分頁導航 -->
-  <div class="custom-pagination">
+        <!-- 分頁導航 -->
+        <div class="custom-pagination">
             <?php
             if ($current_page > 1) {
                 echo '<a href="?page=1"><button>首頁</button></a>';
@@ -170,8 +171,6 @@ $result = mysqli_query($link, $sql);
 
     </div>
 
- 
-
     <!-- 模態框 -->
     <div id="exampleModal" class="modal fade s3-modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
@@ -196,30 +195,45 @@ $result = mysqli_query($link, $sql);
         </div>
     </div>
 
+
     <script>
         function showModal(mistakeId) {
-            fetch('get_service_time.php?mistake_id=' + mistakeId)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    let content = '<ul>';
-                    data.forEach(item => {
-                        content += `<li>${item.day}: ${item.open_time} - ${item.close_time}</li>`;
-                    });
-                    content += '</ul>';
-                    document.getElementById('exampleModal').querySelector('.modal-body').innerHTML = content;
-                    $('#exampleModal').modal('show');
-                })
-                .catch(error => {
-                    console.error('Error fetching service times:', error);
-                    document.getElementById('exampleModal').querySelector('.modal-body').innerHTML = '<p>無法獲取營業時間資料。</p>';
-                    $('#exampleModal').modal('show');
+    fetch('mistake_admin.php?mistake_id=' + mistakeId)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.length > 0) {
+                const institution = data[0];
+                let content = `
+                    <h5>${institution.institution_name}</h5>
+                    <p>地址: ${institution.address}</p>
+                    <p>電話: ${institution.phone}</p>
+                    <h6>營業時間:</h6>
+                    <ul>`;
+
+                institution.service_times.forEach(item => {
+                    content += `<li>${item.day}: ${item.open_time} - ${item.close_time}</li>`;
                 });
-        }
+                content += '</ul>';
+            } else {
+                content = '<p>無營業時間資料。</p>';
+            }
+
+            document.getElementById('exampleModal').querySelector('.modal-body').innerHTML = content;
+            $('#exampleModal').modal('show');
+        })
+        .catch(error => {
+            console.error('Error fetching service times:', error);
+            document.getElementById('exampleModal').querySelector('.modal-body').innerHTML = '<p>無法獲取營業時間資料。</p>';
+            $('#exampleModal').modal('show');
+        });
+}
+
+
     </script>
 
 </body>
@@ -235,6 +249,7 @@ function getOriginalData($institution_id)
     $result = mysqli_query($link, $sql);
     return mysqli_fetch_assoc($result);
 }
+
 
 // 獲取營業時間資料
 function getServiceTimes($mistake_id)
